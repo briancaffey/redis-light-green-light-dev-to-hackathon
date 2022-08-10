@@ -1,0 +1,37 @@
+version: "2.4"
+
+services:
+
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command:
+      - "python3"
+      - "-m"
+      - "flask"
+      - "run"
+      - "--host=0.0.0.0"
+    volumes:
+      - ./app:/code
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    container_name: redis
+
+
+volumes:
+  redis-data:

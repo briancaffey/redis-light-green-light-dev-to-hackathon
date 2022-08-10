@@ -1,0 +1,30 @@
+version: "2.4"
+
+services:
+
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command:
+      - "gunicorn"
+      - "--bind"
+      - "0.0.0.0:5000"
+      - "wsgi:app"
+    volumes:
+      - ./app:/code
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis-data:/data
+    container_name: redis
+
+volumes:
+  redis-data:

@@ -1,0 +1,106 @@
+resource "aws_cloudwatch_log_group" "this" {
+  name              = var.log_group_name
+  retention_in_days = 1
+}
+
+resource "aws_cloudwatch_log_stream" "this" {
+  name           = var.log_stream_prefix
+  log_group_name = aws_cloudwatch_log_group.this.name
+}
+
+resource "aws_ecs_task_definition" "this" {
+  family       = "${terraform.workspace}-${var.name}"
+  network_mode = "awsvpc"
+  cpu                      = 1024
+  memory                   = 2048
+  requires_compatibilities = ["FARGATE"]
+  container_definitions = jsonencode([
+    {
+      name        = var.name
+      image       = var.image
+      essential   = true
+      links       = []
+      environment = var.env_vars
+      command     = var.command
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = var.log_group_name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = var.log_stream_prefix
+        }
+      }
+      portMappings = [
+        {
+          containerPort = var.port
+          hostPort      = var.port
+          protocol      = "tcp"
+        }
+      ]
+    }
+  ])
+  task_role_arn = var.task_role_arn
+  execution_role_arn = var.execution_role_arn
+}
+
+resource "aws_ecs_service" "this" {
+  name            = "${terraform.workspace}-${var.name}"
+  cluster         = var.ecs_cluster_id
+  task_definition = aws_ecs_task_definition.this.arn
+  enable_execute_command = true
+  launch_type     = "FARGATE"
+  desired_count = var.app_count
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.this.arn
+    container_name   = var.name
+    container_port   = var.port
+  }
+
+  network_configuration {
+    security_groups = [var.ecs_sg_id]
+    subnets         = var.public_subnets
+    assign_public_ip = true
+  }
+}
+
+resource "aws_lb_target_group" "this" {
+  port                 = var.port
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = var.vpc_id
+  deregistration_delay = 5
+
+  health_check {
+    healthy_threshold   = var.health_check_healthy_threshold
+    unhealthy_threshold = 3
+    interval            = var.health_check_interval
+    matcher             = "200-399"
+    path                = var.health_check_path
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = "5"
+  }
+  tags = {
+    Name = "${terraform.workspace}-${var.name}-tg" #* https://github.com/hashicorp/terraform-provider-aws/issues/636#issuecomment-397459646
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_lb_listener_rule" "this" {
+  listener_arn = var.listener_arn
+  priority     = var.priority
+
+  condition {
+    path_pattern {
+      values = var.path_patterns
+    }
+  }
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this.arn
+  }
+}
