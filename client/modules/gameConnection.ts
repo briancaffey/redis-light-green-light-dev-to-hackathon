@@ -4,7 +4,7 @@ import { useSocketIO } from './socket';
 
 export default function useGameConnection() {
 
-  const socket = useSocketIO('game')
+  const { socket } = useSocketIO('game')
 
   return { socket }
 

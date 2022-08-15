@@ -2,12 +2,21 @@ import os
 import time
 import uuid
 
-
+from celery import Celery
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room, send
 
-from tasks import create_task
+
+REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
+REDIS_PROTOCOL = os.environ.get("REDIS_PROTOCOL", "redis")
+REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
+BROKEN_URL_DB_INDEX = "2"
+RESULT_BACKEND_DB_INDEX = "3"
+
+celery = Celery(__name__)
+celery.conf.broker_url = f"{REDIS_PROTOCOL}://{REDIS_HOST}:{REDIS_PORT}/{BROKEN_URL_DB_INDEX}"
+celery.conf.result_backend = f"{REDIS_PROTOCOL}://{REDIS_HOST}:{REDIS_PORT}/{RESULT_BACKEND_DB_INDEX}"
 
 import redis
 
@@ -35,20 +44,27 @@ socketio = SocketIO(
     message_queue=MESSAGE_QUEUE,
 )
 
-@socketio.on('connect')
-def connect():
-    print('Client is connected')
+###############################################################################
+# Celery
+###############################################################################
 
-@socketio.on('message')
-def handle_message(message):
-    print('got a new message!!!!!!!')
-    print(message)
+@celery.task(name="create_task")
+def create_task(task_type):
+    time.sleep(int(task_type) * 2)
+    return True
 
-@socketio.on('message', namespace='/test')
-def handle_message_test_namespace(message):
-    print('got a new message from the test namespace!!')
-    print(message)
+# scheduled tasks using celery beat
+celery.conf.beat_schedule = {
+    'test-period-task': {
+        'task': 'create_task',
+        'schedule': 10.0,
+        'kwargs': {'task_type': '1'}
+    }
+}
 
+###############################################################################
+# API Routes
+###############################################################################
 
 @app.route("/api/status/")
 def check():
@@ -73,6 +89,9 @@ def new_room():
 
     return jsonify({ "id": new_room_id}), 202
 
+###############################################################################
+# SocketIO handlers
+###############################################################################
 
 @socketio.on('move', namespace='/game')
 def handle_move(message):
