@@ -10,12 +10,12 @@ services:
     command:
       - "gunicorn"
       - "--bind"
-      - "0.0.0.0:5000"
+      - "0.0.0.0:8000"
       - "wsgi:app"
     volumes:
       - ./app:/code
     ports:
-      - "5000:5000"
+      - "8000:8000"
     depends_on:
       - redis
 

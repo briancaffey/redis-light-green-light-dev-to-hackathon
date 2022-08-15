@@ -2,26 +2,52 @@ version: "2.4"
 
 services:
 
-  app:
+  app: &app
     container_name: app
     build:
       context: ./app
       dockerfile: Dockerfile
     command:
-      - "python3"
-      - "-m"
-      - "flask"
-      - "run"
-      - "--host=0.0.0.0"
+      - "gunicorn"
+      - "--bind"
+      - "0.0.0.0:8000"
+      - "-k"
+      - "geventwebsocket.gunicorn.workers.GeventWebSocketWorker"
+      - "-w"
+      - "1"
+      - "wsgi:app"
+      - "--reload"
     volumes:
       - ./app:/code
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
     ports:
-      - "5000:5000"
+      - "8000:8000"
     depends_on:
       - redis
+
+  worker:
+    <<: *app
+    container_name: worker
+    command:
+      - "celery"
+      - "--app"
+      - "tasks.celery"
+      - "worker"
+      - "--loglevel=info"
+    ports: []
+
+  scheduler:
+    <<: *app
+    container_name: scheduler
+    command:
+      - "celery"
+      - "--app"
+      - "tasks.celery"
+      - "beat"
+      - "--loglevel=info"
+    ports: []
 
 
   redis:
@@ -32,6 +58,17 @@ services:
       - "6379:6379"
     container_name: redis
 
+  redis-commander:
+    container_name: redis-commander
+    hostname: redis-commander
+    image: rediscommander/redis-commander:latest
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+    ports:
+      - "8085:8081"
+    depends_on:
+      - "redis"
 
 volumes:
   redis-data:

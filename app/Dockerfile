@@ -1,7 +1,9 @@
-FROM --platform=linux/amd64 python:3.9-slim-buster
+FROM python:3.9-slim-buster
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
+
+RUN apt-get update && apt-get install redis -y
 
 WORKDIR /code
 
