@@ -25,22 +25,17 @@ export default defineComponent({
 
     const newRoom = async () => {
       console.log('New Room button clicked')
-      fetch('http://localhost:8000/new', {method: 'POST'})
+      fetch('http://localhost:8000/api/new', {method: 'POST'})
         .then((response) => response.json())
         .then((data) => {
-          router.push(`/game/${data.id}`)
+          router.push(`/room/${data.id}`)
           });
-
-      // console.log(id);
-
-
-
     }
 
     return {
       newRoom
     }
-  },
+  }
 })
 </script>
 

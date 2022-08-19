@@ -6,7 +6,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 
 export default defineComponent({
   props: {
@@ -17,8 +17,12 @@ export default defineComponent({
   },
   setup(props) {
     const baseStyle = "h-24 p-2"
-    const redStyle = props.red ? baseStyle : `${baseStyle} grayscale opacity-50`
-    const greenStyle = props.red ? `${baseStyle} grayscale opacity-50` : baseStyle
+    const redStyle = computed(() => {
+      return props.red ? baseStyle : `${baseStyle} grayscale opacity-50`
+    });
+    const greenStyle = computed(() => {
+      return props.red ? `${baseStyle} grayscale opacity-50` : baseStyle
+    });
 
     return {
       redStyle,

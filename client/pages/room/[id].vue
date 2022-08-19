@@ -2,14 +2,28 @@
   <div>
     <Light :red="red" />
     <div class="flex justify-center">
-      <pre>{{ id.substring(0,5) }}</pre>
+      <pre class="text-white">{{ id.substring(0,5) }}</pre>
+      <div>
+        <pre class="text-white"> - {{ playerNumber.substring(0, 3) }} - {{ playerPosition }}</pre>
+      </div>
     </div>
+
+    <details class="text-white">
+    <div class="text-white">
+      <summary class="text-white"><pre>Players:</pre></summary>
+      <pre>{{ players }}</pre>
+
+    </div>
+    </details>
 
     <div  @click="move(socket)" class="bg-amber-200 mx-4 my-4 border-8 border-r-red-500 border-l-white border-y-slate-100 rounded">
-      <Player :id="playerNumber.substring(0,3)"/>
+      <Player
+        v-for="player in players"
+        :id="player.player"
+        :position="player.pos"
+        :key="player.player"
+        />
     </div>
-
-
   </div>
 </template>
 
@@ -18,7 +32,12 @@ import { io } from 'socket.io-client';
 import { defineComponent } from 'vue';
 import { useRoute } from 'vue-router';
 import { ref } from 'vue';
-import { v4 } from 'uuid';
+
+export interface PlayerType {
+  pos: string;
+  state: string;
+  player: string;
+}
 
 export default defineComponent({
   setup() {
@@ -26,6 +45,8 @@ export default defineComponent({
     let socket = null;
     const red = ref(true);
     const playerNumber = ref('');
+    const playerPosition = ref(0);
+    const players = ref<PlayerType[]>([])
 
     const route = useRoute();
 
@@ -38,17 +59,29 @@ export default defineComponent({
     }
 
     return {
-      id, playerNumber, move, socket, red
+      id, playerNumber, move, socket, red, playerPosition, players
     }
   },
-  created: function() {
-    this.playerNumber = v4()
+  created: async function() {
+    await fetch(
+      'http://localhost:8000/api/session', {
+        method: 'POST'
+      })
+      .then((res) =>  res.json())
+      .then((data) => {
+        console.log(data)
+        this.playerNumber = data.playerNumber;
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+
     // connect with the `game` namespace
     const socket = io('http://localhost:8000/game');
     this.socket = socket;
     this.socket.on('connect', () => {
       this.status = true
-      console.log('joining room');
+      console.log('joining room with id ' + this.id);
       this.socket.emit('join', {room: this.id, player: this.playerNumber})
     });
 
@@ -57,9 +90,16 @@ export default defineComponent({
     });
 
     socket.on('update', (data) => {
-      console.log('getting update');
-      console.log("data is...")
+      console.log("updating....")
       console.log(data)
+      this.players = data.positions;
+      // this.incrementPlayerPosition();
+    });
+
+    socket.on('update_light', (message) => {
+      console.log('updating light');
+      console.log(message);
+      this.red = message.state === 'red' ? true : false;
     });
   }
 })

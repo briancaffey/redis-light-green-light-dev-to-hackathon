@@ -9,3 +9,9 @@
 <script lang="ts" setup>
 import './assets/css/tailwind.css';
 </script>
+
+<style>
+html {
+  background-color: black;
+}
+</style>

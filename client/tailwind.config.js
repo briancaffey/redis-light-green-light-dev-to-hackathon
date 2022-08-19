@@ -5,6 +5,7 @@ module.exports = {
     "./layouts/**/*.vue",
     "./pages/**/*.vue",
     "./plugins/**/*.{js,ts}",
+    "./App.vue",
   ],
   theme: {
     extend: {},
