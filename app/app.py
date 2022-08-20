@@ -164,8 +164,6 @@ def handle_move(message):
 
 @socketio.on('join', namespace="/game")
 def connect_to_game(message):
-    print('Client is connected to game')
-
     # print(session.sid)
     print(message)
     room = message['room']
@@ -173,11 +171,12 @@ def connect_to_game(message):
 
     join_room(f'room:{room}')
 
-    p = r.pipeline()
-    p.hset(f'pos:{room}_{player}', 'pos', 0)
-    p.hset(f'pos:{room}_{player}', 'state', 'alive')
-    p.hset(f'pos:{room}_{player}', 'player', player)
-    p.execute()
+    if not r.exists(f'pos:{room}_{player}'):
+        p = r.pipeline()
+        p.hset(f'pos:{room}_{player}', 'pos', 0)
+        p.hset(f'pos:{room}_{player}', 'state', 'alive')
+        p.hset(f'pos:{room}_{player}', 'player', player)
+        p.execute()
 
     # update the room with positions for all players
     positions = get_room_positions(room)

@@ -32,6 +32,7 @@ import { io } from 'socket.io-client';
 import { defineComponent } from 'vue';
 import { useRoute } from 'vue-router';
 import { ref } from 'vue';
+import { v4 } from 'uuid';
 
 export interface PlayerType {
   pos: string;
@@ -60,39 +61,40 @@ export default defineComponent({
     }
   },
   created: async function() {
-    await fetch(
-      'http://localhost:8000/api/session', {
-        method: 'POST'
-      })
-      .then((res) =>  res.json())
-      .then((data) => {
-        console.log(data)
-        this.playerNumber = data.playerNumber;
-      })
-      .catch((err) => {
-        console.log(err);
+
+    if (process.client) {
+
+      if (!localStorage.getItem('playerNumber')) {
+        // TODO: get playerNumber from session
+        localStorage.setItem('playerNumber', v4());
+        this.playerNumber = v4();
+      } else {
+        this.playerNumber = localStorage.getItem('playerNumber');
+      }
+
+
+
+      // connect with the `game` namespace
+      const socket = io('http://localhost:8000/game');
+      this.socket = socket;
+      this.socket.once('connect', () => {
+        this.status = true
+        console.log('joining room with id ' + this.id);
+        this.socket.emit('join', {room: this.id, player: this.playerNumber})
       });
 
-    // connect with the `game` namespace
-    const socket = io('http://localhost:8000/game');
-    this.socket = socket;
-    this.socket.on('connect', () => {
-      this.status = true
-      console.log('joining room with id ' + this.id);
-      this.socket.emit('join', {room: this.id, player: this.playerNumber})
-    });
+      socket.on('disconnect', () => {
+        console.log('disconnected');
+      });
 
-    socket.on('disconnect', () => {
-      console.log('disconnected');
-    });
+      socket.on('update', (data) => {
+        this.players = data.positions;
+      });
 
-    socket.on('update', (data) => {
-      this.players = data.positions;
-    });
-
-    socket.on('update_light', (message) => {
-      this.red = message.state === 'red' ? true : false;
-    });
+      socket.on('update_light', (message) => {
+        this.red = message.state === 'red' ? true : false;
+      });
+    }
   }
 })
 </script>
