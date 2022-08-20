@@ -51,24 +51,13 @@ services:
 
 
   redis:
-    image: redis:alpine
+    image: redis/redis-stack:latest
     volumes:
-      - redis-data:/data
+      - redis-data1:/data
     ports:
       - "6379:6379"
+      - "8001:8001"
     container_name: redis
-
-  redis-commander:
-    container_name: redis-commander
-    hostname: redis-commander
-    image: rediscommander/redis-commander:latest
-    restart: always
-    environment:
-      - REDIS_HOST=redis
-    ports:
-      - "8085:8081"
-    depends_on:
-      - "redis"
 
   nginx:
     container_name: nginx
@@ -83,4 +72,4 @@ services:
       - ./nginx/dev/dev.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
-  redis-data:
+  redis-data1:
