@@ -4,7 +4,7 @@
     <div class="flex justify-center">
       <pre class="text-white">{{ id.substring(0,5) }}</pre>
       <div>
-        <pre class="text-white"> - {{ playerNumber.substring(0, 3) }} - {{ playerPosition }}</pre>
+        <pre class="text-white"> - {{ playerNumber.substring(0, 3) }}</pre>
       </div>
     </div>
 
@@ -45,7 +45,6 @@ export default defineComponent({
     let socket = null;
     const red = ref(true);
     const playerNumber = ref('');
-    const playerPosition = ref(0);
     const players = ref<PlayerType[]>([])
 
     const route = useRoute();
@@ -53,13 +52,11 @@ export default defineComponent({
     const id = route.params.id as string;
 
     const move = (socket) => {
-      console.log('move button clicked')
-      console.log(socket);
       socket.emit('move', {room: id, player: playerNumber.value});
     }
 
     return {
-      id, playerNumber, move, socket, red, playerPosition, players
+      id, playerNumber, move, socket, red, players
     }
   },
   created: async function() {
@@ -90,15 +87,10 @@ export default defineComponent({
     });
 
     socket.on('update', (data) => {
-      console.log("updating....")
-      console.log(data)
       this.players = data.positions;
-      // this.incrementPlayerPosition();
     });
 
     socket.on('update_light', (message) => {
-      console.log('updating light');
-      console.log(message);
       this.red = message.state === 'red' ? true : false;
     });
   }
