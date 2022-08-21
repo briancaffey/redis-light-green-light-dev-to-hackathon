@@ -3,14 +3,21 @@
     <Header />
 
     <div class="flex justify-center pt-4">
-      <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" @click="newRoom">Start a new game</button>
+      <button class="bg-blue-700 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded" @click="newRoom">Start a new game</button>
     </div>
 
     <div class="flex justify-center pt-4">
-      <nuxt-link class="bg-zinc-500 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded" to="/about">
+      <nuxt-link class="bg-orange-700 hover:bg-orange-500 text-white font-bold py-2 px-4 rounded" to="/rooms">
+        Rooms
+      </nuxt-link>
+    </div>
+
+    <div class="flex justify-center pt-4">
+      <nuxt-link class="bg-zinc-700 hover:bg-zinc-500 text-white font-bold py-2 px-4 rounded" to="/about">
         About
       </nuxt-link>
     </div>
+
   </div>
 </template>
 
@@ -19,6 +26,12 @@ import { defineComponent } from 'vue'
 import { useRouter } from 'vue-router'
 
 export default defineComponent({
+  props: {
+    room: {
+      type: String,
+      default: '',
+    },
+  },
   setup() {
 
     const router = useRouter()

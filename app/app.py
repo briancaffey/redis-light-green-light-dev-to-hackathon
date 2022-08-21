@@ -4,14 +4,14 @@ import time
 import uuid
 
 from celery import Celery
-from flask import Flask, jsonify, session
+from flask import Flask, jsonify, session, request
 from flask_cors import CORS
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, close_room, send, disconnect
 
 import redis
 
-REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PROTOCOL = os.environ.get("REDIS_PROTOCOL", "redis")
 REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
 BROKEN_URL_DB_INDEX = "2"
@@ -116,8 +116,10 @@ def new_room():
 
 @app.route("/api/rooms", methods=["GET"])
 def get_rooms():
-    rooms = r.keys("room:*")
-    return jsonify(rooms)
+    # rooms = r.keys("room:*")
+    cursor = request.args.get("cursor", 0)
+    cursor, rooms = r.scan(cursor=cursor, match="room:*")
+    return jsonify({"cursor": cursor, "rooms": rooms})
 
 ###############################################################################
 # Utility Functions
@@ -200,13 +202,21 @@ def leave(message):
     room, player = message['room'], message['player']
     print(room, player)
 
-    # disconnect
-    disconnect()
+    positions = get_room_positions(room)
+    emit('update', {"positions": list(positions)}, room=f'room:{room}')
+
     # remove the pos key for the room/player
     print("deleting pos key")
     r.delete(f'pos:{room}_{player}')
+
+    # disconnect
+    disconnect()
+
     # delete the room if there are no players left in the room
     if not r.keys(f'pos:{room}_*'):
         print("closing room...")
         # close the room
         close_room(f'room:{room}')
+
+        # delete the room key
+        r.delete(f'room:{room}')

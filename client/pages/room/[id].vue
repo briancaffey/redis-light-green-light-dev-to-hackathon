@@ -1,5 +1,6 @@
 <template>
   <div>
+    <h1 class="text-white p-2 text-2xl text-center">Redis Light, Green Light</h1>
     <Light :red="red" />
     <div class="flex justify-center">
       <pre class="text-white">{{ id.substring(0,5) }}</pre>
@@ -8,7 +9,7 @@
       </div>
     </div>
 
-    <details class="text-white">
+    <details class="text-white p-2">
     <div class="text-white">
       <summary class="text-white"><pre>Players:</pre></summary>
       <pre>{{ players }}</pre>
@@ -32,7 +33,7 @@
     <div class="flex justify-center">
       <button
         class="text-white border-2 border-white rounded p-2 hover:bg-gray-800"
-        @click="disconnect(socket)">
+        @click.prevent="leave(socket)">
         Leave Game
       </button>
     </div>
@@ -69,14 +70,14 @@ export default defineComponent({
       socket.emit('move', {room: id, player: playerNumber.value});
     }
 
-    const disconnect = (socket) => {
+    const leave = (socket) => {
       socket.emit('leave', {room: id, player: playerNumber.value});
       console.log('You have been disconnected from the game')
       router.push('/')
     }
 
     return {
-      id, playerNumber, move, socket, red, players, disconnect
+      id, playerNumber, move, socket, red, players, leave
     }
   },
   created: async function() {

@@ -20,6 +20,7 @@ services:
     volumes:
       - ./app:/code
     environment:
+      - REDIS_HOST=redis
       - FLASK_ENV=development
       - FLASK_DEBUG=1
     ports:
