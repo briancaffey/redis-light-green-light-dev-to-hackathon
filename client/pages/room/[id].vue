@@ -25,6 +25,8 @@
         :id="player.player"
         :position="player.pos"
         :key="player.player"
+        :is-current-player="player.player == playerNumber"
+        :state="player.state"
       />
     </div>
     <div class="flex justify-center">
@@ -40,7 +42,7 @@
 <script lang="ts">
 import { io } from 'socket.io-client';
 import { defineComponent } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { v4 } from 'uuid';
 
@@ -59,6 +61,7 @@ export default defineComponent({
     const players = ref<PlayerType[]>([])
 
     const route = useRoute();
+    const router = useRouter();
 
     const id = route.params.id as string;
 
@@ -67,7 +70,9 @@ export default defineComponent({
     }
 
     const disconnect = (socket) => {
-      socket.emit('disconnect', {room: id, player: playerNumber.value});
+      socket.emit('leave', {room: id, player: playerNumber.value});
+      console.log('You have been disconnected from the game')
+      router.push('/')
     }
 
     return {
@@ -95,10 +100,6 @@ export default defineComponent({
         this.status = true
         console.log('joining room with id ' + this.id);
         this.socket.emit('join', {room: this.id, player: this.playerNumber})
-      });
-
-      socket.on('disconnect', () => {
-        console.log('disconnected');
       });
 
       socket.on('update', (data) => {

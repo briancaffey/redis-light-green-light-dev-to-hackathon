@@ -1,7 +1,7 @@
 <template>
-  <div class="flex noselect">
+  <div class="flex noselect uppercase ">
     <div :style="width"> </div>
-    <div class="bg-teal-800	text-white p-1 m-2 rounded"><pre>{{ id.substring(0,3) }}</pre></div>
+    <div :class="playerClass"><pre>{{ id.substring(0,3) }}</pre></div>
   </div>
 </template>
 
@@ -17,6 +17,14 @@ export default defineComponent({
     position: {
       type: String,
       default: 0,
+    },
+    isCurrentPlayer: {
+      type: Boolean,
+      default: false
+    },
+    state: {
+      type: String,
+      default: 'alive'
     }
   },
   setup(props) {
@@ -25,14 +33,36 @@ export default defineComponent({
       return props.position;
     });
 
+    const state = computed(() => {
+      return props.state;
+    })
+
     const width = computed(() => {
       return `width: ${position.value * 10}px`;
+    });
+
+    const playerClass = computed(() => {
+      const baseClasses = "p-1 m-2 rounded border-2"
+      if (state.value == 'alive') {
+        if (props.isCurrentPlayer) {
+          return `bg-teal-800	text-white border-white ${baseClasses}`
+        } else {
+          return `bg-white text-teal-800 border-teal-800 ${baseClasses}`
+        }
+      } else if (state.value == 'dead') {
+        if (props.isCurrentPlayer) {
+          return `bg-red-800	text-white border-red ${baseClasses}`
+        } else {
+          return `bg-white text-red-800 border-red-800 ${baseClasses}`
+        }
+      }
     });
 
     return {
       width,
       id: props.id,
       position,
+      playerClass
     }
   },
 })

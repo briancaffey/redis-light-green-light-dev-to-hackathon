@@ -4,10 +4,10 @@ import time
 import uuid
 
 from celery import Celery
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, session
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room, send
 from flask_session import Session
+from flask_socketio import SocketIO, emit, join_room, close_room, send, disconnect
 
 import redis
 
@@ -194,11 +194,14 @@ def connect_to_game(message):
 
     send(f'User {player} has joined room room:{room} at position 0', room=f'room:{room}')
 
-@socketio.on('disconnect', namespace="/game")
-def disconnect(message):
-    print('disconnected')
+@socketio.on('leave', namespace="/game")
+def leave(message):
+    app.logger.info('leaving room')
     room, player = message['room'], message['player']
     print(room, player)
+
+    # disconnect
+    disconnect()
     # remove the pos key for the room/player
     print("deleting pos key")
     r.delete(f'pos:{room}_{player}')
