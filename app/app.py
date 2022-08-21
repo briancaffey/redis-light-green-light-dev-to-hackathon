@@ -11,8 +11,6 @@ from flask_session import Session
 
 import redis
 
-# SESSION_TYPE = 'redis'
-
 REDIS_HOST = os.environ.get("REDIS_HOST", "redis")
 REDIS_PROTOCOL = os.environ.get("REDIS_PROTOCOL", "redis")
 REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
@@ -26,8 +24,8 @@ celery.conf.result_backend = f"{REDIS_PROTOCOL}://{REDIS_HOST}:{REDIS_PORT}/{RES
 app = Flask(__name__)
 app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_REDIS'] = redis.from_url(f'redis://{os.environ.get("REDIS_HOST", "redis")}:6379/3')
-# app.config['SESSION_COOKIE_DOMAIN'] = os.environ.get("SESSION_COOKIE_DOMAIN", "localhost:3000")
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "secret")
+
 CORS(app)
 Session(app)
 
@@ -95,16 +93,6 @@ celery.conf.beat_schedule = {
 def check():
     return "OK"
 
-@app.route("/api/session/set")
-def set_session():
-    session["id"] = str(uuid.uuid4())
-    return jsonify({"id": session["id"]})
-
-@app.route("/api/session/get")
-def get_session():
-    return session["id"]
-
-
 @app.route("/api/session", methods=["POST"])
 def player_number():
     if session.get("session") is None:
@@ -125,6 +113,11 @@ def new_room():
     p.execute()
 
     return jsonify({ "id": new_room_id}), 202
+
+@app.route("/api/rooms", methods=["GET"])
+def get_rooms():
+    rooms = r.keys("room:*")
+    return jsonify(rooms)
 
 ###############################################################################
 # Utility Functions
@@ -155,7 +148,25 @@ def handle_move(message):
     print(message)
     room = message['room']
     player = message['player']
-    r.hincrby(f'pos:{room}_{player}', 'pos', 1)
+
+    # check to see if the player is dead
+    # the client should prevent this from happening
+    if r.hget(f'pos:{room}_{player}', 'state') == 'dead':
+        print("player is dead, do nothing")
+        return
+
+    # if the light is green, move the player forward
+    light = r.hget(f'room:{room}', "light")
+    print(f"light: {light}")
+
+    if light == "green":
+        value = r.hincrby(f'pos:{room}_{player}', 'pos', 1)
+        if value == 100:
+            pass
+
+    # if the light is red, do not move the player forward and set the player state to "dead"
+    if light == "red":
+        r.hset(f'pos:{room}_{player}', 'state', 'dead')
 
     positions = get_room_positions(room)
 
@@ -164,7 +175,6 @@ def handle_move(message):
 
 @socketio.on('join', namespace="/game")
 def connect_to_game(message):
-    # print(session.sid)
     print(message)
     room = message['room']
     player = message['player']
@@ -183,3 +193,17 @@ def connect_to_game(message):
     emit('update', {"positions": list(positions)}, room=f'room:{room}')
 
     send(f'User {player} has joined room room:{room} at position 0', room=f'room:{room}')
+
+@socketio.on('disconnect', namespace="/game")
+def disconnect(message):
+    print('disconnected')
+    room, player = message['room'], message['player']
+    print(room, player)
+    # remove the pos key for the room/player
+    print("deleting pos key")
+    r.delete(f'pos:{room}_{player}')
+    # delete the room if there are no players left in the room
+    if not r.keys(f'pos:{room}_*'):
+        print("closing room...")
+        # close the room
+        close_room(f'room:{room}')

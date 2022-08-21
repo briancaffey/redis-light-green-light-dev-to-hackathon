@@ -16,13 +16,23 @@
     </div>
     </details>
 
-    <div  @click="move(socket)" class="bg-amber-200 mx-4 my-4 border-8 border-r-red-500 border-l-white border-y-slate-100 rounded">
+    <div
+      @click="move(socket)"
+      class="bg-amber-200 mx-4 my-4 border-8 border-r-red-500 border-l-white border-y-slate-100 rounded"
+    >
       <Player
         v-for="player in players"
         :id="player.player"
         :position="player.pos"
         :key="player.player"
-        />
+      />
+    </div>
+    <div class="flex justify-center">
+      <button
+        class="text-white border-2 border-white rounded p-2 hover:bg-gray-800"
+        @click="disconnect(socket)">
+        Leave Game
+      </button>
     </div>
   </div>
 </template>
@@ -56,8 +66,12 @@ export default defineComponent({
       socket.emit('move', {room: id, player: playerNumber.value});
     }
 
+    const disconnect = (socket) => {
+      socket.emit('disconnect', {room: id, player: playerNumber.value});
+    }
+
     return {
-      id, playerNumber, move, socket, red, players
+      id, playerNumber, move, socket, red, players, disconnect
     }
   },
   created: async function() {
