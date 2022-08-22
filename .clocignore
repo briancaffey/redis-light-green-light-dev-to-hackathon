@@ -1,0 +1,6 @@
+.vscode
+notes
+.nuxt
+node_modules
+__pycache__
+.env

@@ -28,3 +28,9 @@ tf-fmt:
 
 tf-destroy:
 	terraform -chdir=terraform destroy
+
+cloc:
+	cloc \
+		--exclude-dir=$$(tr '\n' ',' < .clocignore) \
+		--exclude-ext=json \
+		.
