@@ -1,0 +1,21 @@
+{
+    "app_name": "Redis Light, Green Light",
+    "description": "A recreation of 'Red Light, Green Light' using Python, TypeScript and Redis",
+    "hidden": "true",
+    "rank": "42",
+    "type": "Real-time web game",
+    "contributed_by": "Community",
+    "repo_url": "https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon",
+    "download_url": "https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/archive/refs/heads/main.zip",
+    "hosted_url": "",
+    "language": ["Python", "TypeScript"],
+    "redis_commands": ["HSET", "HGETALL", "HSET", "HINCRBY", "XADD", "XRANGE"],
+    "redis_features": ["queue", "messaging", "streams"],
+    "redis_modules": ["RedisSearch"],
+    "app_image_urls": [
+    ],
+    "youtube_url": "",
+    "special_tags": ["Hackathon"],
+    "verticals": ["Gaming"],
+    "markdown": "https://raw.githubusercontent.com/briancaffey/redis-light-green-light-dev-to-hackathon/main/README.md"
+}
