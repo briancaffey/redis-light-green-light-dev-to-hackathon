@@ -2,7 +2,9 @@
   <nuxt-link
     class="text-white rounded border-2 border-white p-2 m-2 hover:bg-blue-700"
     :to="link"
-  ><pre class="uppercase">{{ room.substring(0,5) }}</pre></nuxt-link>
+  >
+    <pre class="uppercase">{{ room.substring(0,5) }}</pre>
+  </nuxt-link>
 </template>
 
 <script>
@@ -18,7 +20,7 @@ export default defineComponent({
   setup(props) {
     const room = ref('');
 
-    room.value = props.room.split(':')[1];
+    room.value = props.room;
     const link = `/room/${room.value}`;
 
     return {

@@ -18,10 +18,10 @@ export default defineComponent({
   setup(props) {
     const baseStyle = "h-24 p-2"
     const redStyle = computed(() => {
-      return props.red ? baseStyle : `${baseStyle} grayscale opacity-50`
+      return props.red ? baseStyle : `${baseStyle} grayscale brightness-150`
     });
     const greenStyle = computed(() => {
-      return props.red ? `${baseStyle} grayscale opacity-50` : baseStyle
+      return props.red ? `${baseStyle} grayscale brightness-150` : baseStyle
     });
 
     return {

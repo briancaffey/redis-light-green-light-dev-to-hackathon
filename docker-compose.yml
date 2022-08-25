@@ -6,7 +6,7 @@ services:
     container_name: app
     build:
       context: ./app
-      dockerfile: Dockerfile
+      target: local
     command:
       - "gunicorn"
       - "--bind"
@@ -20,6 +20,7 @@ services:
     volumes:
       - ./app:/code
     environment:
+      - REDIS_OM_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - FLASK_ENV=development
       - FLASK_DEBUG=1

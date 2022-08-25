@@ -12,6 +12,6 @@ import './assets/css/tailwind.css';
 
 <style>
 html {
-  background-color: rgb(99, 99, 92);
+  background-color: #e67aa1;
 }
 </style>

@@ -10,15 +10,47 @@ from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, close_room, send, disconnect
 import redis
 
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
-REDIS_PROTOCOL = os.environ.get("REDIS_PROTOCOL", "redis")
-REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
-BROKEN_URL_DB_INDEX = "2"
-RESULT_BACKEND_DB_INDEX = "3"
+from redis_om import Field, get_redis_connection, HashModel, Migrator
+
+###############################################################################
+# Redis OM Models
+###############################################################################
+
+class Room(HashModel):
+    room: uuid.UUID = Field(index=True)
+    light: str
+    changed: int
+    created: int
+
+class Position(HashModel):
+    pos: int
+    state: str
+    player: uuid.UUID = Field(index=True)
+    room: uuid.UUID = Field(index=True)
+
+Migrator().run()
+
+###############################################################################
+# Constants
+###############################################################################
+
+class PlayerState:
+    ALIVE = "alive"
+    DEAD = "dead"
+
+class LightState:
+    RED = "red"
+    GREEN = "green"
 
 ###############################################################################
 # Configure Celery
 ###############################################################################
+
+REDIS_PROTOCOL = os.environ.get("REDIS_PROTOCOL", "redis")
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
+BROKEN_URL_DB_INDEX = "2"
+RESULT_BACKEND_DB_INDEX = "3"
 
 celery = Celery(__name__)
 celery.conf.broker_url = (
@@ -44,22 +76,15 @@ CORS(app)
 Session(app)
 
 try:
-    r = redis.Redis(
-        host=os.environ.get("REDIS_HOST", "redis"),
-        port=6379,
-        charset="utf-8",
-        decode_responses=True,
-    )
+    om_redis_conn = get_redis_connection()
 except:
-    pass
+    raise Exception("Could not get redis connection. Make sure REDIS_OM_URL is set.")
 
 ###############################################################################
 # Configure Flask-SocketIO
 ###############################################################################
 
 MESSAGE_QUEUE = f'redis://{os.environ.get("REDIS_HOST", "redis")}:6379/1'
-# socketio = SocketIO(app, message_queue=MESSAGE_QUEUE, cors_allowed_origins='*')
-print(MESSAGE_QUEUE)
 
 socketio = SocketIO(
     app,
@@ -76,27 +101,35 @@ socketio = SocketIO(
 
 @celery.task(name="update_light", ignore_result=True)
 def update_light(room, state):
-    # update the light of a room
-    print(f"update_light: {room} {state}")
+    """Update the light of a room"""
     timestamp = round(time.time())
-    p = r.pipeline()
-    p.hset(room, "light", state)
-    p.hset(room, "updated", timestamp)
-    p.execute()
+
+    # get the room and update the light state
+    om_room = Room.find(Room.room == room).first()
+    om_room.update(light=state, changed=timestamp)
+    om_room.save()
+
+    # broadcast the new light state to all connected clients
     socketio.emit(
-        "update_light", {"room": room, "state": state}, room=room, namespace="/game"
+        "update_light", {"room": room, "state": state}, room=f'room:{room}', namespace="/game"
     )
 
 
 @celery.task(name="update_lights", ignore_result=True)
 def update_lights():
-    rooms = r.keys("room:*")
+    """Get all active game rooms and update submit new task to update light state"""
+
+    # get all rooms
+    rooms = Room.find().all()
+
+    # loop over rooms and add a celery task to update the light for each room
     for room in rooms:
-        print(room)
-        states = ["red", "green"]
+        states = [LightState.RED, LightState.GREEN]
         random.shuffle(states)
         state = states[0]
-        update_light.delay(room, state)
+
+        update_light.delay(room.room, state)
+
     return True
 
 
@@ -117,55 +150,45 @@ celery.conf.beat_schedule = {
 def check():
     return "OK"
 
-
-@app.route("/api/session", methods=["POST"])
-def player_number():
-    if session.get("session") is None:
-        playerNumber = session.sid  # uuid.uuid4()
-        session["playerNumber"] = playerNumber
-        return jsonify({"playerNumber": playerNumber}), 202
-    return jsonify({"playerNumber": session.sid}), 200
-
-
 @app.route("/api/new", methods=["POST"])
 def new_room():
     new_room_id = uuid.uuid4()
-    new_room_key = f"room:{new_room_id}"
     timestamp = round(time.time())
-    p = r.pipeline()
-    p.hset(new_room_key, "light", "red")
-    p.hset(new_room_key, "changed", f"{timestamp}")
-    p.hset(new_room_key, "created", f"{timestamp}")
-    p.execute()
 
-    return jsonify({"id": new_room_id}), 202
+    room = Room(
+        room=new_room_id,
+        light=LightState.RED,
+        changed=timestamp,
+        created=timestamp
+    )
+
+    room.save()
+
+    return jsonify({"id": room.room}), 202
 
 
 @app.route("/api/rooms", methods=["GET"])
 def get_rooms():
-    # rooms = r.keys("room:*")
-    cursor = request.args.get("cursor", 0)
-    cursor, rooms = r.scan(cursor=cursor, match="room:*")
-    return jsonify({"cursor": cursor, "rooms": rooms})
+    """Get all rooms. Note: this does not support pagination"""
+    om_rooms = Room.find().all()
+
+    rooms = [{"room": str(room.room)} for room in om_rooms]
+
+    return jsonify({"rooms": rooms}), 200
 
 
 ###############################################################################
 # Utility Functions
 ###############################################################################
 
+def get_room_positions_om(room):
+    """Get all positions for `room`"""
 
-def get_room_positions(room):
-    position_keys = r.keys(f"pos:{room}_*")
-    print(position_keys)
+    positions = Position.find(Position.room == room).all()
 
-    # use a pipeline to get all of the player positions for a room
-    p = r.pipeline()
-
-    for k in position_keys:
-        p.hgetall(k)
-
-    # execute the pipeline and get the results
-    positions = p.execute()
+    # serialize to json
+    # player has type of UUID which needs to be converted to a string
+    positions = [{"player": str(p.player), "pos": p.pos, "state": p.state} for p in positions]
 
     return positions
 
@@ -184,45 +207,59 @@ def handle_move(message):
 
     # check to see if the player is dead
     # the client should prevent this from happening
-    if r.hget(f"pos:{room}_{player}", "state") == "dead":
+
+    position = Position.find((Position.player == player) & (Position.room == room)).first()
+
+    if position.state == PlayerState.DEAD:
         print("player is dead, do nothing")
         return
 
     # if the light is green, move the player forward
-    light = r.hget(f"room:{room}", "light")
-    print(f"light: {light}")
+    om_room = Room.find(Room.room == room).first()
 
-    if light == "green":
-        value = r.hincrby(f"pos:{room}_{player}", "pos", 1)
+    if om_room.light == LightState.GREEN:
+        value = position.pos
         if value == 100:
+            # player wins
             pass
+        if value < 100:
+            key = position.key()
+            om_redis_conn.hincrby(key, "pos", 1)
 
-    # if the light is red, do not move the player forward and set the player state to "dead"
-    if light == "red":
-        r.hset(f"pos:{room}_{player}", "state", "dead")
+    if om_room.light == LightState.RED:
+        key = position.key()
+        om_redis_conn.hset(key, "state", PlayerState.DEAD)
 
-    positions = get_room_positions(room)
+    positions = get_room_positions_om(room)
 
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
 
 @socketio.on("join", namespace="/game")
 def connect_to_game(message):
-    print(message)
+    """Handler for when a player joins a room"""
     room = message["room"]
     player = message["player"]
 
+    app.logger.info(f"Player {player} is joining room {room}")
+
     join_room(f"room:{room}")
 
-    if not r.exists(f"pos:{room}_{player}"):
-        p = r.pipeline()
-        p.hset(f"pos:{room}_{player}", "pos", 0)
-        p.hset(f"pos:{room}_{player}", "state", "alive")
-        p.hset(f"pos:{room}_{player}", "player", player)
-        p.execute()
+    om_player_position = Position.find(
+        (Position.room == room) & (Position.player == player)).all()
+
+    if not om_player_position:
+        position = Position(
+            room=room,
+            player=player,
+            pos=0,
+            state=PlayerState.ALIVE
+        )
+
+        position.save()
 
     # update the room with positions for all players
-    positions = get_room_positions(room)
+    positions = get_room_positions_om(room)
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
     send(
@@ -234,23 +271,27 @@ def connect_to_game(message):
 def leave(message):
     app.logger.info("leaving room")
     room, player = message["room"], message["player"]
-    print(room, player)
 
     positions = get_room_positions(room)
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
-    # remove the pos key for the room/player
-    print("deleting pos key")
-    r.delete(f"pos:{room}_{player}")
+    # remove the Position key
+    position = Position.find((Position.player == player) & (Position.room == room)).first()
+    position.delete()
 
     # disconnect
     disconnect()
 
     # delete the room if there are no players left in the room
-    if not r.keys(f"pos:{room}_*"):
-        print("closing room...")
+    # find any remaining players in the room
+    remaining_players = Position.find(Position.room == room).all()
+    if not remaining_players:
+        app.logger.info("Closing room")
+
         # close the room
         close_room(f"room:{room}")
 
-        # delete the room key
-        r.delete(f"room:{room}")
+        # get the room key and delete it
+        room = Room.find(Room.room == room)
+        room.delete()
+        app.logger.info("Room deleted")

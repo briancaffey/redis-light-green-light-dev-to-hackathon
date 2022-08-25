@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-white p-2 text-2xl text-center font-bold"><pre>Redis Light, Green Light</pre></h1>
+    <h1 class="text-black p-2 text-2xl text-center font-bold"><pre>Redis Light, Green Light</pre></h1>
     <Light :red="red" />
     <div class="flex justify-center">
       <pre class="text-white">{{ id.substring(0,5) }}</pre>
