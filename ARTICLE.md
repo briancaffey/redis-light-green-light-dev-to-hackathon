@@ -19,11 +19,11 @@ For real-time communication I added the `Flask-SocketIO` library to my Flask app
 
 Like I do with most of my projects, I used `docker-compose` to set up the backend application services and database and I used Nuxt's `npm run dev` command to work on the UI.
 
-The backend application services included:
+The backend application services include:
 
-- Flask server
-- Celery beat task scheduler
-- Celery worker
+- Flask server (for API endpoints and Websocket handlers)
+- Celery beat task scheduler (for scheduling tasks to change the light color in each room)
+- Celery worker (to change the light color for a room and to update that players in that room via Websocket)
 
 ### Submission Category
 
@@ -34,26 +34,16 @@ Wacky Wildcards
 [Note]: # (This is where you can embed the optional bonus video you created to accompany your submission. Ensure your video is published publicly to YouTube and you’ve used the embed tag here to share it with us. By opting to include a video, you will be eligible for BONUS prizes. Learn more in the announcement post.)
 
 ### Language Used
-[Note]: # (Select the language you used for your project – must be one of the following: C#/ASP.NET Core, Java/Spring, JS/TS/Node.js, Python)
 
+Python
 
 ### Link to Code
 
-[Note]: # (Our markdown editor supports pretty embeds. Try this syntax: `{% embed link_to_your_repo %}` to share a GitHub repository)
-
-BTW, your Github code’s README file should contain the details as [per this template](https://github.com/redis-developer/hackathon-docs/blob/main/README.md).
+{% embed https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon %}
 
 ### Additional Resources / Info
 
-[Note:] # (Be sure to link to any open source projects that are using your workflow!)
-
 [Note:] # Screenshots/demo videos are encouraged!
-
-### Collaborators
-
-[Note]: # (Be sure to include the DEV usernames of your collaborators, if any. Prizes for winning projects with multiple collaborators will be sent ONLY to the person who posts this submission and they will distribute the prize evenly.)
-
-[Note]: # (All collaborators with DEV profiles listed here will receive a badge, however, prizes including sticker packs will only be sent to the member who publishes the post, with the person expected to distribute the prizes evenly amongst their collaborators.)
 
 - - -
 
