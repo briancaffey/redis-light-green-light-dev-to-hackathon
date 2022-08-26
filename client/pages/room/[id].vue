@@ -3,11 +3,11 @@
     <Title />
     <Light :red="red" />
     <div class="flex justify-center">
-      <div>
-        <pre class="p-1 m-2 rounded border-2	text-white border-white uppercase">{{ id.substring(0,5) }}</pre>
+      <div @click="copyLink">
+        <pre class="p-1 m-2 rounded border-2	text-teal-800 border-teal-800 bg-white uppercase cursor-pointer">game #{{ id.substring(0,5) }} 🔗</pre>
       </div>
       <div>
-        <pre class="p-1 m-2 rounded border-2 bg-teal-800	text-white border-white uppercase">{{ playerNumber.substring(0, 3) }}</pre>
+        <pre class="p-1 m-2 rounded border-2 bg-teal-800	text-white border-white uppercase cursor-pointer">player #{{ playerNumber.substring(0, 3) }}</pre>
       </div>
     </div>
     <div
@@ -69,8 +69,13 @@ export default defineComponent({
       router.push('/')
     }
 
+    const copyLink = () => {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Game Link Copied to Clipboard")
+    }
+
     return {
-      id, playerNumber, move, socket, red, players, leave
+      id, playerNumber, move, socket, red, players, leave, copyLink
     }
   },
   created: async function() {
