@@ -1,20 +1,21 @@
 <template>
   <div>
+    <Title />
     <Header />
 
     <div class="flex justify-center pt-4">
-      <button class="bg-blue-700 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded" @click="newRoom">Start a new game</button>
+      <button class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded uppercase font-body" @click="newRoom">new game</button>
     </div>
 
     <div class="flex justify-center pt-4">
-      <nuxt-link class="bg-orange-700 hover:bg-orange-500 text-white font-bold py-2 px-4 rounded" to="/rooms">
-        Rooms
+      <nuxt-link class="bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded uppercase font-body" to="/rooms">
+        active games
       </nuxt-link>
     </div>
 
     <div class="flex justify-center pt-4">
-      <nuxt-link class="bg-zinc-700 hover:bg-zinc-500 text-white font-bold py-2 px-4 rounded" to="/about">
-        About
+      <nuxt-link class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded uppercase font-body" to="/about">
+        about
       </nuxt-link>
     </div>
 

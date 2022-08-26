@@ -1,6 +1,9 @@
 <template>
   <div>
+    <Title />
     <Header />
+
+    <h1 class="header">Active Rooms</h1>
 
     <div v-if="rooms" class="m-2 flex flex-wrap">
       <Room v-for="room in rooms" :room="room.room" :key="room.room" />

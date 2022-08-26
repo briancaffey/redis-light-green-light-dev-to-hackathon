@@ -8,7 +8,12 @@ module.exports = {
     "./App.vue",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        heading: ["Komikax", 'sans-serif'],
+        body: ["Komikax", 'sans-serif']
+      }
+    },
   },
   plugins: [],
 }
