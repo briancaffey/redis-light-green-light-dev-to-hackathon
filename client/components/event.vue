@@ -30,7 +30,7 @@
       #{{ body.player.substring(0,3) }} left @ {{ body.pos }}
     </div>
 
-    <div class="event bg-black-800" v-if="body.event == 'end'">
+    <div class="event bg-zinc-800" v-if="body.event == 'end'">
       GAME ENDED
     </div>
 

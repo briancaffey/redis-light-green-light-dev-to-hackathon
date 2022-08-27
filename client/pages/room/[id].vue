@@ -25,10 +25,11 @@
     </div>
     <div class="flex justify-center">
       <button
-        class="text-white border-2 border-white rounded p-2 hover:bg-gray-800 font-body"
+        class="text-white border-2 border-white rounded p-2 hover:bg-gray-800 font-body m-2"
         @click.prevent="leave(socket)">
         Leave Game
       </button>
+      <nuxt-link class="text-white border-2 border-white rounded p-2 hover:bg-gray-800 font-body m-2" :to="'/archives/' + id">Event List</nuxt-link>
     </div>
   </div>
 </template>
