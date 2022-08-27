@@ -16,11 +16,13 @@ from redis_om import Field, get_redis_connection, HashModel, Migrator
 # Redis OM Models
 ###############################################################################
 
+
 class Room(HashModel):
     room: uuid.UUID = Field(index=True)
     light: str
     changed: int
     created: int
+
 
 class Position(HashModel):
     pos: int
@@ -28,19 +30,23 @@ class Position(HashModel):
     player: uuid.UUID = Field(index=True)
     room: uuid.UUID = Field(index=True)
 
+
 Migrator().run()
 
 ###############################################################################
 # Constants
 ###############################################################################
 
+
 class PlayerState:
     ALIVE = "alive"
     DEAD = "dead"
 
+
 class LightState:
     RED = "red"
     GREEN = "green"
+
 
 class EventType:
     CREATED = "created"
@@ -51,6 +57,7 @@ class EventType:
     DIE = "die"
     LEAVE = "leave"
     END = "end"
+
 
 FINISH_LINE = 5
 
@@ -124,17 +131,15 @@ def update_light(room, state):
 
     # record light update in the redis stream
     om_redis_conn.xadd(
-        f"stream:{room}",
-        {
-            "event": EventType.LIGHT,
-            "light": state,
-            "room": room
-        }
+        f"stream:{room}", {"event": EventType.LIGHT, "light": state, "room": room}
     )
 
     # broadcast the new light state to all connected clients
     socketio.emit(
-        "update_light", {"room": room, "state": state}, room=f'room:{room}', namespace="/game"
+        "update_light",
+        {"room": room, "state": state},
+        room=f"room:{room}",
+        namespace="/game",
     )
 
 
@@ -173,21 +178,19 @@ celery.conf.beat_schedule = {
 def check():
     return "OK"
 
+
 @app.route("/api/new", methods=["POST"])
 def new_room():
     new_room_id = uuid.uuid4()
     timestamp = round(time.time())
 
     room = Room(
-        room=new_room_id,
-        light=LightState.RED,
-        changed=timestamp,
-        created=timestamp
+        room=new_room_id, light=LightState.RED, changed=timestamp, created=timestamp
     )
 
     room.save()
 
-    om_redis_conn.xadd(f"stream:{new_room_id}", { "event": EventType.CREATED})
+    om_redis_conn.xadd(f"stream:{new_room_id}", {"event": EventType.CREATED})
 
     return jsonify({"id": room.room}), 202
 
@@ -201,6 +204,7 @@ def get_rooms():
 
     return jsonify({"rooms": rooms}), 200
 
+
 @app.route("/api/rooms/<room>/events")
 def get_events(room):
     events = om_redis_conn.xrange(f"stream:{room}", min="-", max="+")
@@ -213,6 +217,7 @@ def get_events(room):
 # Utility Functions
 ###############################################################################
 
+
 def get_room_positions_om(room):
     """Get all positions for `room`"""
 
@@ -220,7 +225,9 @@ def get_room_positions_om(room):
 
     # serialize to json
     # player has type of UUID which needs to be converted to a string
-    positions = [{"player": str(p.player), "pos": p.pos, "state": p.state} for p in positions]
+    positions = [
+        {"player": str(p.player), "pos": p.pos, "state": p.state} for p in positions
+    ]
 
     return positions
 
@@ -240,7 +247,9 @@ def handle_move(message):
     # check to see if the player is dead
     # the client should prevent this from happening
 
-    position = Position.find((Position.player == player) & (Position.room == room)).first()
+    position = Position.find(
+        (Position.player == player) & (Position.room == room)
+    ).first()
 
     if position.state == PlayerState.DEAD:
         print("player is dead, do nothing")
@@ -253,11 +262,7 @@ def handle_move(message):
         value = position.pos
         if value == FINISH_LINE:
             om_redis_conn.xadd(
-                f"stream:{room}",
-                {
-                    "event": EventType.WIN,
-                    "player": player
-                }
+                f"stream:{room}", {"event": EventType.WIN, "player": player}
             )
             # player wins
             pass
@@ -270,8 +275,8 @@ def handle_move(message):
                     "event": EventType.MOVE,
                     "player": player,
                     "room": room,
-                    "pos": new_pos
-                }
+                    "pos": new_pos,
+                },
             )
 
     if om_room.light == LightState.RED:
@@ -283,8 +288,8 @@ def handle_move(message):
                 "event": EventType.DIE,
                 "player": player,
                 "room": room,
-                "pos": position.pos
-            }
+                "pos": position.pos,
+            },
         )
 
     positions = get_room_positions_om(room)
@@ -303,15 +308,11 @@ def connect_to_game(message):
     join_room(f"room:{room}")
 
     om_player_position = Position.find(
-        (Position.room == room) & (Position.player == player)).all()
+        (Position.room == room) & (Position.player == player)
+    ).all()
 
     if not om_player_position:
-        position = Position(
-            room=room,
-            player=player,
-            pos=0,
-            state=PlayerState.ALIVE
-        )
+        position = Position(room=room, player=player, pos=0, state=PlayerState.ALIVE)
 
         position.save()
 
@@ -321,12 +322,7 @@ def connect_to_game(message):
 
     om_redis_conn.xadd(
         f"stream:{room}",
-        {
-            "event": EventType.JOIN,
-            "player": player,
-            "room": room,
-            "pos": 0
-        }
+        {"event": EventType.JOIN, "player": player, "room": room, "pos": 0},
     )
 
     send(
@@ -343,18 +339,15 @@ def leave(message):
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
     # remove the Position key
-    position = Position.find((Position.player == player) & (Position.room == room)).first()
+    position = Position.find(
+        (Position.player == player) & (Position.room == room)
+    ).first()
     last_pos = position.pos
     Position.delete(position.pk)
 
     om_redis_conn.xadd(
         f"stream:{room}",
-        {
-            "event": EventType.LEAVE,
-            "player": player,
-            "room": room,
-            "pos": last_pos
-        }
+        {"event": EventType.LEAVE, "player": player, "room": room, "pos": last_pos},
     )
 
     # disconnect
@@ -378,10 +371,5 @@ def leave(message):
 
         om_redis_conn.xadd(
             f"stream:{room}",
-            {
-                "event": EventType.END,
-                "player": player,
-                "room": room,
-                "pos": last_pos
-            }
+            {"event": EventType.END, "player": player, "room": room, "pos": last_pos},
         )
