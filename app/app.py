@@ -211,6 +211,7 @@ def get_active_rooms():
 
     return jsonify({"rooms": rooms}), 200
 
+
 # TODO: figure out how to paginate this if there are a large number of rooms
 @app.route("/api/archives", methods=["GET"])
 def get_room_streams():
