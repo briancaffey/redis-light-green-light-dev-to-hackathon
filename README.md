@@ -2,13 +2,17 @@
 
 This project is an online multiplayer implementation of the game "Red Light, Green Light" using Python, Javascript and Redis. This is my submission for the 2022 [Redis Hackathon on DEV](https://dev.to/devteam/announcing-the-redis-hackathon-on-dev-3248)
 
+### Gameplay
+
 ![Redis Light, Green Light Gameplay](/images/gameplay.png)
 
-# Overview video (Optional)
+### Game event log
+
+![Redis Stream data](/images/events.png)
+
+# Overview video
 
 Here's a short video that explains the project and how it uses Redis:
-
-[Insert your own video here, and remove the one below]
 
 [![Embed your YouTube video](https://i.ytimg.com/vi/vyxdC1qK4NE/maxresdefault.jpg)](https://www.youtube.com/watch?v=vyxdC1qK4NE)
 
@@ -252,20 +256,3 @@ The client runs on `http://localhost:3000`. It makes API and websocket connectio
 ## Deployment
 
 To make deploys work, you need to create free account on [Redis Cloud](https://redis.info/try-free-dev-to)
-
-### Google Cloud Run
-
-[Insert Run on Google button](https://cloud.google.com/blog/products/serverless/introducing-cloud-run-button-click-to-deploy-your-git-repos-to-google-cloud)
-
-### Heroku
-
-[Insert Deploy on Heroku button](https://devcenter.heroku.com/articles/heroku-button)
-
-### Netlify
-
-[Insert Deploy on Netlify button](https://www.netlify.com/blog/2016/11/29/introducing-the-deploy-to-netlify-button/)
-
-### Vercel
-
-[Insert Deploy on Vercel button](https://vercel.com/docs/deploy-button)
-
