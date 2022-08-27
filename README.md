@@ -1,8 +1,8 @@
 # Redis Light, Green Light
 
-An online multiplayer implementation of the game "Red Light, Green Light" using Redis and Flask. This is my submission for the 2022 [Redis Hackathon on DEV](https://dev.to/devteam/announcing-the-redis-hackathon-on-dev-3248)
+This project is an online multiplayer implementation of the game "Red Light, Green Light" using Python, Javascript and Redis. This is my submission for the 2022 [Redis Hackathon on DEV](https://dev.to/devteam/announcing-the-redis-hackathon-on-dev-3248)
 
-[Insert app screenshots](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#uploading-assets)
+![Redis Light, Green Light Gameplay](/images/gameplay.png)
 
 # Overview video (Optional)
 
@@ -16,7 +16,7 @@ Here's a short video that explains the project and how it uses Redis:
 
 ### How the data is stored:
 
-Real-time data for game state is stored in hashes called `Room` and `Position`:
+Real-time data for game state is stored in hashes called `Room` and `Position`.
 
 ```py
 class Room(HashModel):
@@ -35,24 +35,25 @@ class Position(HashModel):
 
 RedisOM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
 
-**Creating a new room**
+**Creating a new room**: `CREATE operation` on `Room` hash
 
 ```py
 room = Room(
     room=new_room_id, light=LightState.RED, changed=timestamp, created=timestamp
 )
+room.save()
 ```
 
-**Changing the color of a light for a room**
+**Changing the color of a light for a room**: `UPDATE` operation on `Room` hash
 
 ```py
 om_room = Room.find(Room.room == room).first()
 om_room.update(light=state, changed=timestamp)
 ```
 
-In Squid Game, Jun-ho learns that the games have been running for over 30 years, and that his elder brother Hwang In-ho was the winner in 2015. To keep a permanent historical record all of the events from a room I use Redis streams and the `XADD` command.
+In Squid Game, Jun-ho learns that the games have been running for over 30 years, and that his elder brother Hwang In-ho was the winner in 2015. To keep a permanent historical record all of the events from a room I use **Redis streams** and the `XADD` command.
 
-There are eight types of events that can happen in the lifecycle of a game:
+There are **eight** types of events that can happen in the lifecycle of a game:
 
 ```py
 class EventType:
@@ -66,7 +67,7 @@ class EventType:
     END = "end"
 ```
 
-Here are some examples of how I store game event data in streams:
+I use streams as append-only logs to persist very action that happens during the course of a game. Here are some examples of how I store game event data in streams:
 
 **Record a room creation event**
 
@@ -124,6 +125,7 @@ To run the backend locally with docker and docker-compose you will need:
 
 - docker 20.10.14+
 - docker-compose 1.29.2
+- Python 3.9 (if not using docker)
 
 Recommended:
 
