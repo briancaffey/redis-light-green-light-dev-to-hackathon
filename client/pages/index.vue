@@ -4,7 +4,9 @@
     <Header />
 
     <div class="flex justify-center pt-4">
-      <button class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded uppercase font-body" @click="newRoom">new game</button>
+      <button class="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded uppercase font-body" @click="newRoom">
+        new game
+        </button>
     </div>
 
     <div class="flex justify-center pt-4">
@@ -14,8 +16,14 @@
     </div>
 
     <div class="flex justify-center pt-4">
+      <nuxt-link class="bg-violet-700 hover:bg-violet-600 text-white font-bold py-2 px-4 rounded uppercase font-body" to="/archives">
+        game archives 🗃
+      </nuxt-link>
+    </div>
+
+    <div class="flex justify-center pt-4">
       <nuxt-link class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-2 px-4 rounded uppercase font-body" to="/about">
-        about
+        about ℹ️
       </nuxt-link>
     </div>
 

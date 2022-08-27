@@ -29,7 +29,7 @@
         @click.prevent="leave(socket)">
         Leave Game
       </button>
-      <nuxt-link class="text-white border-2 border-white rounded p-2 hover:bg-gray-800 font-body m-2" :to="'/archives/' + id">Event Stream</nuxt-link>
+      <nuxt-link class="text-white border-2 border-white rounded p-2 hover:bg-gray-800 font-body m-2" :to="'/archives/room/' + id">Event Stream</nuxt-link>
     </div>
   </div>
 </template>

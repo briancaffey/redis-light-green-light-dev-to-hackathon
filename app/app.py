@@ -191,7 +191,13 @@ def new_room():
 
     room.save()
 
-    om_redis_conn.xadd(f"stream:room:{new_room_id}", {"event": EventType.CREATED})
+    # execute these commands with one round trip to redis instead of two
+    p = om_redis_conn.pipeline()
+    # adding this record will create the stream even if it doesn't yet exist
+    p.xadd(f"stream:room:{new_room_id}", {"event": EventType.CREATED})
+    # the stream:archive stream will be used for fetching all rooms in order of creation
+    p.xadd(f"stream:archive", {"room": str(new_room_id), "created": timestamp})
+    p.execute()
 
     return jsonify({"id": room.room}), 202
 
@@ -205,23 +211,23 @@ def get_active_rooms():
 
     return jsonify({"rooms": rooms}), 200
 
-
+# TODO: figure out how to paginate this if there are a large number of rooms
 @app.route("/api/archives", methods=["GET"])
 def get_room_streams():
     """Get all stream keys with the `stream:room:{room}` pattern"""
     cursor = request.args.get("cursor", 0)
-    all_rooms = om_redis_conn.scan(
-        cursor=int(cursor),
-        match="stream:*",
-        count=10,
-        type="STREAM"
+
+    p = om_redis_conn.pipeline()
+    p.xrange(
+        f"stream:archive",
+        min="-",
+        max="+",
     )
+    p.xlen(f"stream:archive")
 
-    print(all_rooms)
+    all_rooms, count = p.execute()
 
-    rooms = all_rooms
-
-    return jsonify({"rooms": rooms}), 200
+    return jsonify({"rooms": all_rooms, "count": count}), 200
 
 
 @app.route("/api/rooms/<room>/events")

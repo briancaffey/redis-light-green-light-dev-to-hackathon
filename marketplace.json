@@ -9,13 +9,13 @@
     "download_url": "https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/archive/refs/heads/main.zip",
     "hosted_url": "",
     "language": ["Python", "TypeScript"],
-    "redis_commands": ["HSET", "HGETALL", "HSET", "HINCRBY", "XADD", "XRANGE"],
+    "redis_commands": ["HSET", "HGETALL", "HINCRBY", "XADD", "XRANGE", "XLEN"],
     "redis_features": ["queue", "messaging", "streams"],
     "redis_modules": ["RedisSearch"],
     "app_image_urls": [
     ],
     "youtube_url": "",
-    "special_tags": ["Hackathon"],
+    "special_tags": ["Hackathon", "RedisOM"],
     "verticals": ["Gaming"],
     "markdown": "https://raw.githubusercontent.com/briancaffey/redis-light-green-light-dev-to-hackathon/main/README.md"
 }
