@@ -208,8 +208,6 @@ def get_rooms():
 @app.route("/api/rooms/<room>/events")
 def get_events(room):
     events = om_redis_conn.xrange(f"stream:{room}", min="-", max="+")
-    print("events...")
-    print(events)
     return jsonify({"events": events})
 
 
@@ -240,7 +238,6 @@ def get_room_positions_om(room):
 @socketio.on("move", namespace="/game")
 def handle_move(message):
     """Attempt to move a player forward by one step"""
-    print(message)
     room = message["room"]
     player = message["player"]
 
@@ -252,7 +249,7 @@ def handle_move(message):
     ).first()
 
     if position.state == PlayerState.DEAD:
-        print("player is dead, do nothing")
+        app.logger.info("Player is dead, do nothing.")
         return
 
     # if the light is green, move the player forward
@@ -356,8 +353,6 @@ def leave(message):
     # delete the room if there are no players left in the room
     # find any remaining players in the room
     remaining_players = Position.find(Position.room == room).all()
-    print(remaining_players)
-    print(bool(remaining_players))
     if not remaining_players:
         app.logger.info("Closing room")
 
