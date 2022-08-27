@@ -71,14 +71,14 @@ Here are some examples of how I store game event data in streams:
 **Record a room creation event**
 
 ```py
-om_redis_conn.xadd(f"stream:{new_room_id}", {"event": EventType.CREATED})
+om_redis_conn.xadd(f"stream:room:{new_room_id}", {"event": EventType.CREATED})
 ```
 
 **Record when a player moves successfully**
 
 ```py
 om_redis_conn.xadd(
-    f"stream:{room}",
+    f"stream:room:{room}",
     {
         "event": EventType.MOVE,
         "player": player,
@@ -91,7 +91,7 @@ om_redis_conn.xadd(
 
 ```py
 om_redis_conn.xadd(
-    f"stream:{room}",
+    f"stream:room:{room}",
     {"event": EventType.WIN, "player": player, "pos": value},
 )
 ```

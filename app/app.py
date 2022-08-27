@@ -132,7 +132,7 @@ def update_light(room, state):
 
     # record light update in the redis stream
     om_redis_conn.xadd(
-        f"stream:{room}", {"event": EventType.LIGHT, "light": state, "room": room}
+        f"stream:room:{room}", {"event": EventType.LIGHT, "light": state, "room": room}
     )
 
     # broadcast the new light state to all connected clients
@@ -191,13 +191,13 @@ def new_room():
 
     room.save()
 
-    om_redis_conn.xadd(f"stream:{new_room_id}", {"event": EventType.CREATED})
+    om_redis_conn.xadd(f"stream:room:{new_room_id}", {"event": EventType.CREATED})
 
     return jsonify({"id": room.room}), 202
 
 
 @app.route("/api/rooms", methods=["GET"])
-def get_rooms():
+def get_active_rooms():
     """Get all rooms. Note: this does not support pagination"""
     om_rooms = Room.find().all()
 
@@ -206,9 +206,27 @@ def get_rooms():
     return jsonify({"rooms": rooms}), 200
 
 
+@app.route("/api/archives", methods=["GET"])
+def get_room_streams():
+    """Get all stream keys with the `stream:room:{room}` pattern"""
+    cursor = request.args.get("cursor", 0)
+    all_rooms = om_redis_conn.scan(
+        cursor=int(cursor),
+        match="stream:*",
+        count=10,
+        type="STREAM"
+    )
+
+    print(all_rooms)
+
+    rooms = all_rooms
+
+    return jsonify({"rooms": rooms}), 200
+
+
 @app.route("/api/rooms/<room>/events")
 def get_events(room):
-    events = om_redis_conn.xrange(f"stream:{room}", min="-", max="+")
+    events = om_redis_conn.xrange(f"stream:room:{room}", min="-", max="+")
     return jsonify({"events": events})
 
 
@@ -240,7 +258,7 @@ def remove_player_from_room(player, room):
     Position.delete(position.pk)
 
     om_redis_conn.xadd(
-        f"stream:{room}",
+        f"stream:room:{room}",
         {"event": EventType.LEAVE, "player": player, "room": room, "pos": last_pos},
     )
 
@@ -263,7 +281,7 @@ def clean_up_room(room):
         app.logger.info("Room deleted")
 
         om_redis_conn.xadd(
-            f"stream:{room}",
+            f"stream:room:{room}",
             {"event": EventType.END, "room": room},
         )
 
@@ -297,7 +315,7 @@ def handle_move(message):
         value = position.pos
         if value == FINISH_LINE:
             om_redis_conn.xadd(
-                f"stream:{room}",
+                f"stream:room:{room}",
                 {"event": EventType.WIN, "player": player, "pos": value},
             )
             key = position.key()
@@ -307,7 +325,7 @@ def handle_move(message):
             key = position.key()
             new_pos = om_redis_conn.hincrby(key, "pos", 1)
             om_redis_conn.xadd(
-                f"stream:{room}",
+                f"stream:room:{room}",
                 {
                     "event": EventType.MOVE,
                     "player": player,
@@ -319,7 +337,7 @@ def handle_move(message):
         key = position.key()
         om_redis_conn.hset(key, "state", PlayerState.DEAD)
         om_redis_conn.xadd(
-            f"stream:{room}",
+            f"stream:room:{room}",
             {
                 "event": EventType.DIE,
                 "player": player,
@@ -359,7 +377,7 @@ def connect_to_game(message):
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
     om_redis_conn.xadd(
-        f"stream:{room}",
+        f"stream:room:{room}",
         {"event": EventType.JOIN, "player": player, "room": room, "pos": 0},
     )
 
