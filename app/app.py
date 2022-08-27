@@ -76,7 +76,8 @@ CORS(app)
 Session(app)
 
 try:
-    om_redis_conn = get_redis_connection()
+    # without passing decode_responses=True it was not decoding responses
+    om_redis_conn = get_redis_connection(decode_responses=True)
 except:
     raise Exception("Could not get redis connection. Make sure REDIS_OM_URL is set.")
 
@@ -108,6 +109,16 @@ def update_light(room, state):
     om_room = Room.find(Room.room == room).first()
     om_room.update(light=state, changed=timestamp)
     om_room.save()
+
+    # record light update in the redis stream
+    om_redis_conn.xadd(
+        f"stream:{room}",
+        {
+            "event": "light",
+            "light": state,
+            "room": room
+        }
+    )
 
     # broadcast the new light state to all connected clients
     socketio.emit(
@@ -164,6 +175,8 @@ def new_room():
 
     room.save()
 
+    om_redis_conn.xadd(f"stream:{new_room_id}", { "event": "created"})
+
     return jsonify({"id": room.room}), 202
 
 
@@ -175,6 +188,13 @@ def get_rooms():
     rooms = [{"room": str(room.room)} for room in om_rooms]
 
     return jsonify({"rooms": rooms}), 200
+
+@app.route("/api/rooms/<room>/events")
+def get_events(room):
+    events = om_redis_conn.xrange(f"stream:{room}", min="-", max="+")
+    print("events...")
+    print(events)
+    return jsonify({"events": events})
 
 
 ###############################################################################
@@ -220,15 +240,40 @@ def handle_move(message):
     if om_room.light == LightState.GREEN:
         value = position.pos
         if value == 100:
+            om_redis_conn.xadd(
+                f"stream:{room}",
+                {
+                    "event": "win",
+                    "player": player
+                }
+            )
             # player wins
             pass
         if value < 100:
             key = position.key()
-            om_redis_conn.hincrby(key, "pos", 1)
+            new_pos = om_redis_conn.hincrby(key, "pos", 1)
+            om_redis_conn.xadd(
+                f"stream:{room}",
+                {
+                    "event": "move",
+                    "player": player,
+                    "room": room,
+                    "pos": new_pos
+                }
+            )
 
     if om_room.light == LightState.RED:
         key = position.key()
         om_redis_conn.hset(key, "state", PlayerState.DEAD)
+        om_redis_conn.xadd(
+            f"stream:{room}",
+            {
+                "event": "die",
+                "player": player,
+                "room": room,
+                "pos": position.pos
+            }
+        )
 
     positions = get_room_positions_om(room)
 
@@ -262,6 +307,16 @@ def connect_to_game(message):
     positions = get_room_positions_om(room)
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
+    om_redis_conn.xadd(
+        f"stream:{room}",
+        {
+            "event": "join",
+            "player": player,
+            "room": room,
+            "pos": 0
+        }
+    )
+
     send(
         f"User {player} has joined room room:{room} at position 0", room=f"room:{room}"
     )
@@ -272,12 +327,23 @@ def leave(message):
     app.logger.info("leaving room")
     room, player = message["room"], message["player"]
 
-    positions = get_room_positions(room)
+    positions = get_room_positions_om(room)
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
     # remove the Position key
     position = Position.find((Position.player == player) & (Position.room == room)).first()
-    position.delete()
+    last_pos = position.pos
+    Position.delete(position.pk)
+
+    om_redis_conn.xadd(
+        f"stream:{room}",
+        {
+            "event": "leave",
+            "player": player,
+            "room": room,
+            "pos": last_pos
+        }
+    )
 
     # disconnect
     disconnect()
@@ -285,6 +351,8 @@ def leave(message):
     # delete the room if there are no players left in the room
     # find any remaining players in the room
     remaining_players = Position.find(Position.room == room).all()
+    print(remaining_players)
+    print(bool(remaining_players))
     if not remaining_players:
         app.logger.info("Closing room")
 
@@ -292,6 +360,16 @@ def leave(message):
         close_room(f"room:{room}")
 
         # get the room key and delete it
-        room = Room.find(Room.room == room)
-        room.delete()
+        om_room = Room.find(Room.room == room).first()
+        Room.delete(om_room.pk)
         app.logger.info("Room deleted")
+
+        om_redis_conn.xadd(
+            f"stream:{room}",
+            {
+                "event": "end",
+                "player": player,
+                "room": room,
+                "pos": last_pos
+            }
+        )

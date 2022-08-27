@@ -13,6 +13,10 @@
     }
 
     .header {
-      @apply font-heading uppercase text-center text-white;
+      @apply font-heading uppercase text-center text-white text-2xl pt-4;
+    }
+
+    .event {
+      @apply font-heading border-2 text-white rounded p-2 m-1 text-center;
     }
   }
