@@ -38,7 +38,7 @@ export default defineComponent({
     })
 
     const width = computed(() => {
-      return `width: ${position.value * 10}px`;
+      return `width: ${position.value}%`;
     });
 
     const playerClass = computed(() => {

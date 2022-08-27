@@ -59,7 +59,7 @@ class EventType:
     END = "end"
 
 
-FINISH_LINE = 5
+FINISH_LINE = 100
 
 ###############################################################################
 # Configure Celery

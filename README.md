@@ -98,21 +98,21 @@ om_redis_conn.xadd(
 
 ### How the data is accessed:
 
-To access the data
+Data is accessed using a combination of Redis OM queries and raw Redis commands. When a user joins a room, the web socket handler fetches all players currently in the give room with the following query:
 
-### Performance Benchmarks
+```py
+positions = Position.find(Position.room == room).all()
+```
 
-[If you migrated an existing app to use Redis, please put performance benchmarks here to show the performance improvements.]
+To display all events for a given room, the `XRANGE` command is used to fetch all events which are then sent back to the client:
+
+```py
+events = om_redis_conn.xrange(f"stream:room:{room}", min="-", max="+")
+```
 
 ## How to run it locally?
 
-[Make sure you test this with a fresh clone of your repo, these instructions will be used to judge your app.]
-
-Run the backend:
-
-```
-gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 app:app
-```
+Running the application in a local development environment involves starting the web client and also starting multiple backend services. Backend services can be brought up using a `docker-compose.yml` file or they can be started by running commands in Python virtual environment.
 
 ### Prerequisites
 
