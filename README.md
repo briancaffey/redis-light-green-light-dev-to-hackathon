@@ -16,11 +16,89 @@ Here's a short video that explains the project and how it uses Redis:
 
 ### How the data is stored:
 
-Refer to [this example](https://github.com/redis-developer/basic-analytics-dashboard-redis-bitmaps-nodejs#how-the-data-is-stored) for a more detailed example of what you need for this section.
+Real-time data for game state is stored in hashes called `Room` and `Position`:
+
+```py
+class Room(HashModel):
+    room: uuid.UUID = Field(index=True)
+    light: str # red or green
+    changed: int # timestamp
+    created: int # timestamp
+
+
+class Position(HashModel):
+    pos: int # represents how many steps a player has taken
+    state: str # alive or dead
+    player: uuid.UUID = Field(index=True)
+    room: uuid.UUID = Field(index=True)
+```
+
+RedisOM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
+
+**Creating a new room**
+
+```py
+room = Room(
+    room=new_room_id, light=LightState.RED, changed=timestamp, created=timestamp
+)
+```
+
+**Changing the color of a light for a room**
+
+```py
+om_room = Room.find(Room.room == room).first()
+om_room.update(light=state, changed=timestamp)
+```
+
+In Squid Game, Jun-ho learns that the games have been running for over 30 years, and that his elder brother Hwang In-ho was the winner in 2015. To keep a permanent historical record all of the events from a room I use Redis streams and the `XADD` command.
+
+There are eight types of events that can happen in the lifecycle of a game:
+
+```py
+class EventType:
+    CREATED = "created"
+    LIGHT = "light"
+    JOIN = "join"
+    MOVE = "move"
+    WIN = "win"
+    DIE = "die"
+    LEAVE = "leave"
+    END = "end"
+```
+
+Here are some examples of how I store game event data in streams:
+
+**Record a room creation event**
+
+```py
+om_redis_conn.xadd(f"stream:{new_room_id}", {"event": EventType.CREATED})
+```
+
+**Record when a player moves successfully**
+
+```py
+om_redis_conn.xadd(
+    f"stream:{room}",
+    {
+        "event": EventType.MOVE,
+        "player": player,
+        "pos": new_pos,
+    },
+)
+```
+
+**Record when a player wins**
+
+```py
+om_redis_conn.xadd(
+    f"stream:{room}",
+    {"event": EventType.WIN, "player": player, "pos": value},
+)
+```
 
 ### How the data is accessed:
 
-Refer to [this example](https://github.com/redis-developer/basic-analytics-dashboard-redis-bitmaps-nodejs#how-the-data-is-accessed) for a more detailed example of what you need for this section.
+To access the data
 
 ### Performance Benchmarks
 
@@ -38,11 +116,136 @@ gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 app:app
 
 ### Prerequisites
 
-[Fill out with any prerequisites (e.g. Node, Docker, etc.). Specify minimum versions]
+To run the client locally you will need:
+
+- Node 16.16.0
+
+To run the backend locally with docker and docker-compose you will need:
+
+- docker 20.10.14+
+- docker-compose 1.29.2
+
+Recommended:
+
+- Redis Insights
 
 ### Local installation
 
-[Insert instructions for local installation]
+To start the backend services (Flask API, celery worker, celerybeat scheduler and Redis Stack), you can run:
+
+```
+docker-compose up
+```
+
+Make sure that you do not have any local instances of redis using port `6379` before running the above command, or it will fail to start.
+
+To start the client, run the follow commands:
+
+```
+cd client
+npm i
+npm run dev
+```
+
+The backend can also be ran locally using virtual environments. You can run the `redis-stack` docker image with:
+
+```
+docker-compose -f redis-stack.yml up
+```
+
+Create a virtual environment in the `/app` directory and active it:
+
+```
+python3 -m venv .env
+source .env/bin/activate
+```
+
+Then install pip requirements:
+
+```
+pip install -r requirements.txt
+pip install -r requirements_dev.txt
+```
+
+Next you can start the three services in different windows. Before starting each service, make sure to activate the virtual environment with:
+
+```
+source .env/bin/activate
+```
+
+**Start the Flask API server**
+
+```
+gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 wsgi:app --reload
+```
+
+You should see:
+
+```
+[2022-08-27 11:19:29 -0400] [17881] [INFO] Starting gunicorn 20.1.0
+[2022-08-27 11:19:29 -0400] [17881] [INFO] Listening at: http://127.0.0.1:8000 (17881)
+[2022-08-27 11:19:29 -0400] [17881] [INFO] Using worker: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+[2022-08-27 11:19:29 -0400] [17882] [INFO] Booting worker with pid: 17882
+```
+
+**Start the celery worker**
+
+```
+celery --app app.celery worker --loglevel=info
+```
+
+```
+celery@Brians-MacBook-Pro.local v5.2.3 (dawn-chorus)
+
+macOS-12.3.1-arm64-arm-64bit 2022-08-27 11:21:05
+
+[config]
+.> app:         app:0x105e63a30
+.> transport:   redis://localhost:6379/2
+.> results:     redis://localhost:6379/3
+.> concurrency: 8 (prefork)
+.> task events: OFF (enable -E to monitor tasks in this worker)
+
+[queues]
+.> celery           exchange=celery(direct) key=celery
+
+
+[tasks]
+  . update_light
+  . update_lights
+
+[2022-08-27 11:21:06,094: INFO/MainProcess] Connected to redis://localhost:6379/2
+[2022-08-27 11:21:06,149: INFO/MainProcess] mingle: searching for neighbors
+[2022-08-27 11:21:07,234: INFO/MainProcess] mingle: all alone
+[2022-08-27 11:21:07,356: INFO/MainProcess] celery@Brians-MacBook-Pro.local ready.
+```
+
+**Start the celerybeat service**
+
+```
+celery --app app.celery beat --loglevel=info
+```
+
+You should see:
+
+```
+celery beat v5.2.3 (dawn-chorus) is starting.
+__    -    ... __   -        _
+LocalTime -> 2022-08-27 11:24:58
+Configuration ->
+    . broker -> redis://localhost:6379/2
+    . loader -> celery.loaders.app.AppLoader
+    . scheduler -> celery.beat.PersistentScheduler
+    . db -> celerybeat-schedule
+    . logfile -> [stderr]@%INFO
+    . maxinterval -> 5.00 minutes (300s)
+[2022-08-27 11:24:58,824: INFO/MainProcess] beat: Starting...
+[2022-08-27 11:25:00,847: INFO/MainProcess] Scheduler: Sending due task update_lights (update_lights)
+```
+
+Before starting `celerybeat`, make sure that you have deleted a file called `celerybeat-schedule.db`.
+
+The client runs on `http://localhost:3000`. It makes API and websocket connections with the backend which runs on `http://localhost:8000`.
 
 ## Deployment
 
@@ -64,36 +267,3 @@ To make deploys work, you need to create free account on [Redis Cloud](https://r
 
 [Insert Deploy on Vercel button](https://vercel.com/docs/deploy-button)
 
-## More Information about Redis Stack
-
-Here some resources to help you quickly get started using Redis Stack. If you still have questions, feel free to ask them in the [Redis Discord](https://discord.gg/redis) or on [Twitter](https://twitter.com/redisinc).
-
-### Getting Started
-
-1. Sign up for a [free Redis Cloud account using this link](https://redis.info/try-free-dev-to) and use the [Redis Stack database in the cloud](https://developer.redis.com/create/rediscloud).
-1. Based on the language/framework you want to use, you will find the following client libraries:
-    - [Redis OM .NET (C#)](https://github.com/redis/redis-om-dotnet)
-        - Watch this [getting started video](https://www.youtube.com/watch?v=ZHPXKrJCYNA)
-        - Follow this [getting started guide](https://redis.io/docs/stack/get-started/tutorials/stack-dotnet/)
-    - [Redis OM Node (JS)](https://github.com/redis/redis-om-node)
-        - Watch this [getting started video](https://www.youtube.com/watch?v=KUfufrwpBkM)
-        - Follow this [getting started guide](https://redis.io/docs/stack/get-started/tutorials/stack-node/)
-    - [Redis OM Python](https://github.com/redis/redis-om-python)
-        - Watch this [getting started video](https://www.youtube.com/watch?v=PPT1FElAS84)
-        - Follow this [getting started guide](https://redis.io/docs/stack/get-started/tutorials/stack-python/)
-    - [Redis OM Spring (Java)](https://github.com/redis/redis-om-spring)
-        - Watch this [getting started video](https://www.youtube.com/watch?v=YhQX8pHy3hk)
-        - Follow this [getting started guide](https://redis.io/docs/stack/get-started/tutorials/stack-spring/)
-
-The above videos and guides should be enough to get you started in your desired language/framework. From there you can expand and develop your app. Use the resources below to help guide you further:
-
-1. [Developer Hub](https://redis.info/devhub) - The main developer page for Redis, where you can find information on building using Redis with sample projects, guides, and tutorials.
-1. [Redis Stack getting started page](https://redis.io/docs/stack/) - Lists all the Redis Stack features. From there you can find relevant docs and tutorials for all the capabilities of Redis Stack.
-1. [Redis Rediscover](https://redis.com/rediscover/) - Provides use-cases for Redis as well as real-world examples and educational material
-1. [RedisInsight - Desktop GUI tool](https://redis.info/redisinsight) - Use this to connect to Redis to visually see the data. It also has a CLI inside it that lets you send Redis CLI commands. It also has a profiler so you can see commands that are run on your Redis instance in real-time
-1. Youtube Videos
-    - [Official Redis Youtube channel](https://redis.info/youtube)
-    - [Redis Stack videos](https://www.youtube.com/watch?v=LaiQFZ5bXaM&list=PL83Wfqi-zYZFIQyTMUU6X7rPW2kVV-Ppb) - Help you get started modeling data, using Redis OM, and exploring Redis Stack
-    - [Redis Stack Real-Time Stock App](https://www.youtube.com/watch?v=mUNFvyrsl8Q) from Ahmad Bazzi
-    - [Build a Fullstack Next.js app](https://www.youtube.com/watch?v=DOIWQddRD5M) with Fireship.io
-    - [Microservices with Redis Course](https://www.youtube.com/watch?v=Cy9fAvsXGZA) by Scalable Scripts on freeCodeCamp

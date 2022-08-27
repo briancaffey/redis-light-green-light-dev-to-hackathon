@@ -87,7 +87,7 @@ celery.conf.result_backend = (
 app = Flask(__name__)
 app.config["SESSION_TYPE"] = "redis"
 app.config["SESSION_REDIS"] = redis.from_url(
-    f'redis://{os.environ.get("REDIS_HOST", "redis")}:6379/3'
+    f'redis://{os.environ.get("REDIS_HOST", "localhost")}:6379/3'
 )
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "secret")
 
@@ -95,6 +95,8 @@ CORS(app)
 Session(app)
 
 try:
+    if not os.environ.get("REDIS_OM_URL"):
+        os.environ["REDIS_OM_URL"] = "redis://localhost:6379/0"
     # without passing decode_responses=True it was not decoding responses
     om_redis_conn = get_redis_connection(decode_responses=True)
 except:
@@ -104,7 +106,7 @@ except:
 # Configure Flask-SocketIO
 ###############################################################################
 
-MESSAGE_QUEUE = f'redis://{os.environ.get("REDIS_HOST", "redis")}:6379/1'
+MESSAGE_QUEUE = f'redis://{os.environ.get("REDIS_HOST", "localhost")}:6379/1'
 
 socketio = SocketIO(
     app,
@@ -127,7 +129,6 @@ def update_light(room, state):
     # get the room and update the light state
     om_room = Room.find(Room.room == room).first()
     om_room.update(light=state, changed=timestamp)
-    om_room.save()
 
     # record light update in the redis stream
     om_redis_conn.xadd(
@@ -310,7 +311,6 @@ def handle_move(message):
                 {
                     "event": EventType.MOVE,
                     "player": player,
-                    "room": room,
                     "pos": new_pos,
                 },
             )
@@ -369,14 +369,12 @@ def leave(message):
     """Handles message sent when user clicks on button to leave the room"""
     app.logger.info("leaving room")
     room, player = message["room"], message["player"]
-
-    positions = get_room_positions_om(room)
-    emit("update", {"positions": list(positions)}, room=f"room:{room}")
+    app.logger.info(f"{room} {player}")
 
     remove_player_from_room(player, room)
 
-    # disconnect
-    disconnect()
+    positions = get_room_positions_om(room)
+    emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
     clean_up_room(room)
 
