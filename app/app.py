@@ -42,6 +42,18 @@ class LightState:
     RED = "red"
     GREEN = "green"
 
+class EventType:
+    CREATED = "created"
+    LIGHT = "light"
+    JOIN = "join"
+    MOVE = "move"
+    WIN = "win"
+    DIE = "die"
+    LEAVE = "leave"
+    END = "end"
+
+FINISH_LINE = 5
+
 ###############################################################################
 # Configure Celery
 ###############################################################################
@@ -114,7 +126,7 @@ def update_light(room, state):
     om_redis_conn.xadd(
         f"stream:{room}",
         {
-            "event": "light",
+            "event": EventType.LIGHT,
             "light": state,
             "room": room
         }
@@ -175,7 +187,7 @@ def new_room():
 
     room.save()
 
-    om_redis_conn.xadd(f"stream:{new_room_id}", { "event": "created"})
+    om_redis_conn.xadd(f"stream:{new_room_id}", { "event": EventType.CREATED})
 
     return jsonify({"id": room.room}), 202
 
@@ -239,23 +251,23 @@ def handle_move(message):
 
     if om_room.light == LightState.GREEN:
         value = position.pos
-        if value == 100:
+        if value == FINISH_LINE:
             om_redis_conn.xadd(
                 f"stream:{room}",
                 {
-                    "event": "win",
+                    "event": EventType.WIN,
                     "player": player
                 }
             )
             # player wins
             pass
-        if value < 100:
+        if value < FINISH_LINE:
             key = position.key()
             new_pos = om_redis_conn.hincrby(key, "pos", 1)
             om_redis_conn.xadd(
                 f"stream:{room}",
                 {
-                    "event": "move",
+                    "event": EventType.MOVE,
                     "player": player,
                     "room": room,
                     "pos": new_pos
@@ -268,7 +280,7 @@ def handle_move(message):
         om_redis_conn.xadd(
             f"stream:{room}",
             {
-                "event": "die",
+                "event": EventType.DIE,
                 "player": player,
                 "room": room,
                 "pos": position.pos
@@ -310,7 +322,7 @@ def connect_to_game(message):
     om_redis_conn.xadd(
         f"stream:{room}",
         {
-            "event": "join",
+            "event": EventType.JOIN,
             "player": player,
             "room": room,
             "pos": 0
@@ -338,7 +350,7 @@ def leave(message):
     om_redis_conn.xadd(
         f"stream:{room}",
         {
-            "event": "leave",
+            "event": EventType.LEAVE,
             "player": player,
             "room": room,
             "pos": last_pos
@@ -367,7 +379,7 @@ def leave(message):
         om_redis_conn.xadd(
             f"stream:{room}",
             {
-                "event": "end",
+                "event": EventType.END,
                 "player": player,
                 "room": room,
                 "pos": last_pos
