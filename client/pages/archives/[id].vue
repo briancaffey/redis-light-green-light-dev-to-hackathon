@@ -3,7 +3,7 @@
     <Title />
     <Header />
 
-    <h1 class="header text-2xl pt-4">Room Events for #{{ id.substring(0,5) }}</h1>
+    <h1 class="header text-2xl pt-4">Event Stream for Room #{{ id.substring(0,5) }}</h1>
 
     <div class="pt-4">
       <div class="flex-grow px-4 justify-center" v-if="events">

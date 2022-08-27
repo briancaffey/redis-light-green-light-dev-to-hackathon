@@ -18,16 +18,21 @@
       <span>#{{ body.player.substring(0,3) }} 👟 @ {{ body.pos }}</span>
     </div>
 
+    <!-- light -->
+    <div class="event bg-white border-black text-black" v-if="body.event == 'win'">
+      <span>#{{ body.player.substring(0,3) }} 🎉 @ {{ body.pos }}</span>
+    </div>
+
     <div class="event bg-gray-800" v-if="body.event == 'die'">
       #{{ body.player.substring(0,3) }} 💀 @ {{ body.pos }}
     </div>
 
     <div class="event bg-pink-500" v-if="body.event == 'join'">
-      👋 #{{ body.player.substring(0,3) }} joined @ {{ body.pos }}
+      #{{ body.player.substring(0,3) }} joined
     </div>
 
     <div class="event bg-amber-500" v-if="body.event == 'leave'">
-      #{{ body.player.substring(0,3) }} left @ {{ body.pos }}
+      #{{ body.player.substring(0,3) }} 🚪 @ {{ body.pos }}
     </div>
 
     <div class="event bg-zinc-800" v-if="body.event == 'end'">
@@ -48,9 +53,6 @@ export default defineComponent({
     }
   },
   setup(props) {
-
-    const baseClass = "font-heading noselect border-2 border-teal-800 rounded p-2 m-1";
-
     return {
       timestamp: props.event[0],
       body: props.event[1]

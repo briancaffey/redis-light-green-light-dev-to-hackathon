@@ -230,6 +230,43 @@ def get_room_positions_om(room):
     return positions
 
 
+def remove_player_from_room(player, room):
+    # remove the Position key
+    position = Position.find(
+        (Position.player == player) & (Position.room == room)
+    ).first()
+    last_pos = position.pos
+    Position.delete(position.pk)
+
+    om_redis_conn.xadd(
+        f"stream:{room}",
+        {"event": EventType.LEAVE, "player": player, "room": room, "pos": last_pos},
+    )
+
+
+def clean_up_room(room):
+    """Deletes the room if there are no more players in the room"""
+
+    # find any remaining players in the room
+    remaining_players = Position.find(Position.room == room).all()
+
+    if not remaining_players:
+        app.logger.info("Closing room")
+
+        # close the room
+        close_room(f"room:{room}")
+
+        # get the room key and delete it
+        om_room = Room.find(Room.room == room).first()
+        Room.delete(om_room.pk)
+        app.logger.info("Room deleted")
+
+        om_redis_conn.xadd(
+            f"stream:{room}",
+            {"event": EventType.END, "room": room},
+        )
+
+
 ###############################################################################
 # SocketIO handlers
 ###############################################################################
@@ -259,10 +296,12 @@ def handle_move(message):
         value = position.pos
         if value == FINISH_LINE:
             om_redis_conn.xadd(
-                f"stream:{room}", {"event": EventType.WIN, "player": player}
+                f"stream:{room}",
+                {"event": EventType.WIN, "player": player, "pos": value},
             )
-            # player wins
-            pass
+            key = position.key()
+            new_pos = om_redis_conn.hincrby(key, "pos", 1)
+
         if value < FINISH_LINE:
             key = position.key()
             new_pos = om_redis_conn.hincrby(key, "pos", 1)
@@ -299,6 +338,8 @@ def connect_to_game(message):
     """Handler for when a player joins a room"""
     room = message["room"]
     player = message["player"]
+    session["room"] = room
+    session["player"] = player
 
     app.logger.info(f"Player {player} is joining room {room}")
 
@@ -322,49 +363,36 @@ def connect_to_game(message):
         {"event": EventType.JOIN, "player": player, "room": room, "pos": 0},
     )
 
-    send(
-        f"User {player} has joined room room:{room} at position 0", room=f"room:{room}"
-    )
-
 
 @socketio.on("leave", namespace="/game")
 def leave(message):
+    """Handles message sent when user clicks on button to leave the room"""
     app.logger.info("leaving room")
     room, player = message["room"], message["player"]
 
     positions = get_room_positions_om(room)
     emit("update", {"positions": list(positions)}, room=f"room:{room}")
 
-    # remove the Position key
-    position = Position.find(
-        (Position.player == player) & (Position.room == room)
-    ).first()
-    last_pos = position.pos
-    Position.delete(position.pk)
-
-    om_redis_conn.xadd(
-        f"stream:{room}",
-        {"event": EventType.LEAVE, "player": player, "room": room, "pos": last_pos},
-    )
+    remove_player_from_room(player, room)
 
     # disconnect
     disconnect()
 
-    # delete the room if there are no players left in the room
-    # find any remaining players in the room
-    remaining_players = Position.find(Position.room == room).all()
-    if not remaining_players:
-        app.logger.info("Closing room")
+    clean_up_room(room)
 
-        # close the room
-        close_room(f"room:{room}")
 
-        # get the room key and delete it
-        om_room = Room.find(Room.room == room).first()
-        Room.delete(om_room.pk)
-        app.logger.info("Room deleted")
+@socketio.on("disconnect", namespace="/game")
+def disconnect():
+    """Handle disconnection such as closing the browser"""
 
-        om_redis_conn.xadd(
-            f"stream:{room}",
-            {"event": EventType.END, "player": player, "room": room, "pos": last_pos},
-        )
+    app.logger.info("Disconnecting...")
+
+    # get the player and room associated with the disconnection
+    room = session.get("room")
+    player = session.get("player")
+
+    if player and room:
+        remove_player_from_room(player, room)
+
+    if room:
+        clean_up_room(room)
