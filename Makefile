@@ -1,5 +1,6 @@
 # for local development if not using docker-compose to star the backend services
 
+# check versions of locally installed tools
 check:
 	@docker -v; echo
 	@docker-compose -v; echo
