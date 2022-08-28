@@ -1,33 +1,42 @@
-# for local development
+# for local development if not using docker-compose to star the backend services
 
-dcud:
-	docker compose -f docker-compose.dev.yml up
+check:
+	@docker -v; echo
+	@docker-compose -v; echo
+	@python3 --version; echo
+	@echo Node `node -v`; echo
 
-dcdd:
-	docker compose -f docker-compose.dev.yml down
+redis-stack-up:
+	@docker-compose -f redis-stack.yml up
 
-dcug:
-	docker compose -f docker-compose.gunicorn.yml up
+install_dev:
+	@rm -rf app/.env
+	@python3 -m venv app/.env
+	@. app/.env/bin/activate
+	@python3 -m pip install --upgrade pip
+	@pip install -r app/requirements.txt
+	@pip install -r app/requirements_dev.txt
 
-dcdg:
-	docker compose -f docker-compose.gunicorn.yml down
+clean:
+	@rm -rf .env
 
-# for terraform
+flask:
+	@. app/.env/bin/activate
+	@cd app && gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 wsgi:app --reload
 
-tf-init:
-	terraform -chdir=terraform init
+celery:
+	@. app/.env/bin/activate
+	@cd app && celery --app app.celery worker --loglevel=info
 
-tf-plan:
-	terraform -chdir=terraform plan
+celerybeat:
+	@. app/.env/bin/activate
+	@cd app && celery --app app.celery beat --loglevel=info
 
-tf-apply:
-	terraform -chdir=terraform apply
+nuxt:
+	@cd client && npm i && npm run dev
 
-tf-fmt:
-	terraform fmt -recursive
-
-tf-destroy:
-	terraform -chdir=terraform destroy
+flushall:
+	@docker exec -it redis redis-cli flushall
 
 cloc:
 	cloc \
