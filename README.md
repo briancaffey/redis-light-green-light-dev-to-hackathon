@@ -43,7 +43,7 @@ SUM:                            33            454            122           1432
 
 Here's a short video that explains the project and how it uses Redis:
 
-[[ Coming soon ]]
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BoalZKmgoEU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## How it works
 
@@ -66,7 +66,7 @@ class Position(HashModel):
     room: uuid.UUID = Field(index=True)
 ```
 
-RedisOM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
+Redis OM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
 
 **Creating a new room**: `CREATE operation` on `Room` hash
 
@@ -301,3 +301,5 @@ Configuration ->
 Before starting `celerybeat`, make sure that you have deleted a file called `celerybeat-schedule.db`.
 
 The client runs on `http://localhost:3000`. It makes API and websocket connections with the backend which runs on `http://localhost:8000`.
+
+Please see the [Makefile](/Makefile) for a full list of commands for running the application locally.

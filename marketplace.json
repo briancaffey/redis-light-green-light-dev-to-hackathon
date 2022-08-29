@@ -13,9 +13,12 @@
     "redis_features": ["queue", "messaging", "streams"],
     "redis_modules": ["RedisSearch"],
     "app_image_urls": [
+        "https://res.cloudinary.com/practicaldev/image/fetch/s--391EQ1p1--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/m3rqy7eqz40nqk1e04jj.png",
+        "https://res.cloudinary.com/practicaldev/image/fetch/s--ezf1ssyt--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/0egpm1igfqyon5kjtujv.png",
+        "https://res.cloudinary.com/practicaldev/image/fetch/s--uD8xn_Xp--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/wkmgiz8wtq484rn6dmfc.png"
     ],
-    "youtube_url": "",
-    "special_tags": ["Hackathon", "RedisOM"],
+    "youtube_url": "https://www.youtube.com/watch?v=BoalZKmgoEU",
+    "special_tags": ["Hackathon", "Redis OM"],
     "verticals": ["Gaming"],
     "markdown": "https://raw.githubusercontent.com/briancaffey/redis-light-green-light-dev-to-hackathon/main/README.md"
 }
