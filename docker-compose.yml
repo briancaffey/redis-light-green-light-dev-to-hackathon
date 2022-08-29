@@ -61,17 +61,5 @@ services:
       - "8001:8001"
     container_name: redis
 
-  nginx:
-    container_name: nginx
-    build:
-      context: ./nginx
-      dockerfile: dev/Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - app
-    volumes:
-      - ./nginx/dev/dev.conf:/etc/nginx/nginx.conf:ro
-
 volumes:
   redis-data1:

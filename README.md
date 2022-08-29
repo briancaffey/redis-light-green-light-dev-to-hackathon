@@ -1,20 +1,49 @@
 # Redis Light, Green Light
 
-This project is an online multiplayer implementation of the game "Red Light, Green Light" using Python, Javascript and Redis. This is my submission for the 2022 [Redis Hackathon on DEV](https://dev.to/devteam/announcing-the-redis-hackathon-on-dev-3248)
+This project is an online, multiplayer implementation of "Red Light, Green Light" from Squid Game built with Python, Javascript and Redis. This is my submission for the 2022 [Redis Hackathon on DEV](https://dev.to/devteam/announcing-the-redis-hackathon-on-dev-3248)!
 
 ### Gameplay
 
 ![Redis Light, Green Light Gameplay](/images/gameplay.png)
 
-### Game event log
+### Game event log built with redis streams
 
 ![Redis Stream data](/images/events.png)
+
+### Architecture Overview
+
+![Project Architecture Diagram](/images/rlgl.drawio.png)
+
+## Code Overview with `cloc` (count lines of code)
+
+```
+make cloc
+
+github.com/AlDanial/cloc v 1.94  T=0.03 s (1102.7 files/s, 67098.7 lines/s)
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+Vuejs Component                 13            104             14            528
+Python                           3            178            104            410
+Markdown                         5            139              0            272
+YAML                             3             10              0             83
+make                             1             10              2             34
+SVG                              2              0              0             22
+TypeScript                       1              1              1             22
+CSS                              1              4              0             18
+JavaScript                       1              0              1             18
+Text                             2              0              0             13
+Dockerfile                       1              8              0             12
+-------------------------------------------------------------------------------
+SUM:                            33            454            122           1432
+-------------------------------------------------------------------------------
+```
 
 # Overview video
 
 Here's a short video that explains the project and how it uses Redis:
 
-[![Embed your YouTube video](https://i.ytimg.com/vi/vyxdC1qK4NE/maxresdefault.jpg)](https://www.youtube.com/watch?v=vyxdC1qK4NE)
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BoalZKmgoEU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ## How it works
 
@@ -37,7 +66,7 @@ class Position(HashModel):
     room: uuid.UUID = Field(index=True)
 ```
 
-RedisOM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
+Redis OM is used to perform CRUD (create, read, update and delete) operations on these hashes in API requests, websocket handlers and celery tasks. Here are some examples:
 
 **Creating a new room**: `CREATE operation` on `Room` hash
 
@@ -61,17 +90,17 @@ There are **eight** types of events that can happen in the lifecycle of a game:
 
 ```py
 class EventType:
-    CREATED = "created"
-    LIGHT = "light"
-    JOIN = "join"
-    MOVE = "move"
-    WIN = "win"
-    DIE = "die"
-    LEAVE = "leave"
-    END = "end"
+    CREATED = "created" # new game room is created
+    LIGHT = "light" # the light color is updated
+    JOIN = "join" # player joins a room
+    MOVE = "move" # player moves successfully when the light is green
+    WIN = "win" # player wins by moving 100 steps
+    DIE = "die" # player tries to move when the light is read
+    LEAVE = "leave" # player leaves or is disconnected from the game
+    END = "end" # game ends because there are no more players in the room
 ```
 
-I use streams as append-only logs to persist very action that happens during the course of a game. Here are some examples of how I store game event data in streams:
+I use streams as append-only logs to persist very action that happens during the course of a game. Each event in the stream has an `event` property that stores one of the `EventType`s listed above. Here are some examples of how I store game event data in streams:
 
 **Record a room creation event**
 
@@ -115,9 +144,13 @@ To display all events for a given room, the `XRANGE` command is used to fetch al
 events = om_redis_conn.xrange(f"stream:room:{room}", min="-", max="+")
 ```
 
+### Indirect usage of Redis
+
+In addition to storing temporary game state and append-only event logs, Redis also supports the application as a message broker for the celery worker and scheduler, and it supports the SocketIO as a message queue which is required when there are multiple servers process (Flask, celery, celerybeat). Main application data is stored on DB index `0`, and these other services use other DB indexes for isolation and separation of concerns to the extent that it makes sense.
+
 ## How to run it locally?
 
-Running the application in a local development environment involves starting the web client and also starting multiple backend services. Backend services can be brought up using a `docker-compose.yml` file or they can be started by running commands in Python virtual environment.
+Running the application in a local development environment involves starting the web client and also starting multiple backend services. Backend services can be brought up using a `docker-compose.yml` file or they can be started by running commands in a Python virtual environment.
 
 ### Prerequisites
 
@@ -129,11 +162,25 @@ To run the backend locally with docker and docker-compose you will need:
 
 - docker 20.10.14+
 - docker-compose 1.29.2
-- Python 3.9 (if not using docker)
+- Python 3.9+ (if not using docker)
 
-Recommended:
+Run the following command to check your local versions:
 
-- Redis Insights
+```
+make check
+```
+
+It should show something like:
+
+```
+Docker version 20.10.14, build a224086
+
+docker-compose version 1.29.2, build 5becea4c
+
+Python 3.10.2
+
+Node v16.16.0
+```
 
 ### Local installation
 
@@ -178,6 +225,8 @@ Next you can start the three services in different windows. Before starting each
 ```
 source .env/bin/activate
 ```
+
+For advanced usage, please see the [`Makefile`](/Makefile) which has some helpful targets for starting different parts of the application (redis-stack, backend services and client).
 
 **Start the Flask API server**
 
@@ -253,6 +302,4 @@ Before starting `celerybeat`, make sure that you have deleted a file called `cel
 
 The client runs on `http://localhost:3000`. It makes API and websocket connections with the backend which runs on `http://localhost:8000`.
 
-## Deployment
-
-To make deploys work, you need to create free account on [Redis Cloud](https://redis.info/try-free-dev-to)
+Please see the [Makefile](/Makefile) for a full list of commands for running the application locally.

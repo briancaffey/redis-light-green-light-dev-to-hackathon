@@ -1,34 +1,59 @@
-# for local development
+# docker-compose
 
-dcud:
-	docker compose -f docker-compose.dev.yml up
+# start the backend services (flask, celery, celerybeat, redis-stack)
+docker-compose:
+	@docker-compose up --build
 
-dcdd:
-	docker compose -f docker-compose.dev.yml down
+# start the client
+nuxt:
+	@cd client && npm i && npm run dev
 
-dcug:
-	docker compose -f docker-compose.gunicorn.yml up
+# for local development if not using docker-compose to stat the backend services
 
-dcdg:
-	docker compose -f docker-compose.gunicorn.yml down
+# check versions of locally installed tools
+check:
+	@docker -v; echo
+	@docker-compose -v; echo
+	@python3 --version; echo
+	@echo Node `node -v`; echo
 
-# for terraform
+# stand up only redis stack
+redis-stack-up:
+	@docker-compose -f redis-stack.yml up
 
-tf-init:
-	terraform -chdir=terraform init
+# install dependencies in a python virtual environment
+install_dev:
+	@rm -rf app/.env
+	@python3 -m venv app/.env
+	@. app/.env/bin/activate
+	@python3 -m pip install --upgrade pip
+	@pip install -r app/requirements.txt
+	@pip install -r app/requirements_dev.txt
 
-tf-plan:
-	terraform -chdir=terraform plan
+# delete the python virtual environment
+clean:
+	@rm -rf .env
 
-tf-apply:
-	terraform -chdir=terraform apply
+# start the flask app (api and websockets)
+flask:
+	@. app/.env/bin/activate
+	@cd app && gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 wsgi:app --reload
 
-tf-fmt:
-	terraform fmt -recursive
+# start the celery worker
+celery:
+	@. app/.env/bin/activate
+	@cd app && celery --app app.celery worker --loglevel=info
 
-tf-destroy:
-	terraform -chdir=terraform destroy
+# start the celerybeat process
+celerybeat:
+	@. app/.env/bin/activate
+	@cd app && celery --app app.celery beat --loglevel=info
 
+# delete all keys from all redis databases
+flushall:
+	@docker exec -it redis redis-cli flushall
+
+# count lines of code
 cloc:
 	cloc \
 		--exclude-dir=$$(tr '\n' ',' < .clocignore) \
