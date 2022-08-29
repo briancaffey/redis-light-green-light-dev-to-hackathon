@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/compare/v1.1.0...v1.2.0) (2022-08-29)
+
+
+### Features
+
+* **article:** update article and add links ([fcea5a7](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/commit/fcea5a75c8af93bf90c70f54c4949cae6b2df06e))
+* **docs:** added architecture diagram and added documentation ([6a71807](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/commit/6a71807c050d8e2b9465fa77f5217392b86323d2))
+* **make:** update makefile with commands for local development ([4e94000](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/commit/4e94000053e186c8b5cb6360494f473677b57f8a))
+
+
+### Bug Fixes
+
+* **nginx:** remove unused nginx config files ([336d1d6](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/commit/336d1d6328d98855fb77d98c448cf920dda0f696))
+
 ## [1.1.0](https://github.com/briancaffey/redis-light-green-light-dev-to-hackathon/compare/v1.0.0...v1.1.0) (2022-08-27)
 
 
